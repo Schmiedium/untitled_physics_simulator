@@ -17,3 +17,6 @@ polars = "0.25.1"
 pyo3 = { version = "0.17.3", features = ["extension-module"] }
 serde_json = "1.0.89"
 tobj = "3.2.3"
+flume = "0.10.14"
+polars-arrow = "0.25.1"
+polars-core = "0.25.1"
