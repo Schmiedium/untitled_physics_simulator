@@ -74,24 +74,25 @@ fn simulation_run() -> PyResult<PyObject> {
 
         let names = df.get_column_names_owned();
 
-        let thing = df
+        let vec_py_series = df
             .columns(names)
             .unwrap()
             .into_iter()
             .map(|s| -> PyObject { utility::rust_series_to_py_series(s).unwrap() })
             .collect::<Vec<PyObject>>();
 
-        let blah = Python::with_gil(|py| -> PyResult<PyObject> {
-            let list: &PyList = PyList::new(py, thing);
+        let returning_frame = Python::with_gil(|py| -> PyResult<PyObject> {
+            let list: &PyList = PyList::new(py, vec_py_series);
             let arg = (list,);
 
             let pl = py.import("polars")?;
             let maybe_what_i_want = pl.getattr("DataFrame")?;
             let out = maybe_what_i_want.call1(arg)?;
+
             Ok(out.to_object(py))
         })?;
 
-        Ok((key, blah))
+        Ok((key, returning_frame))
     };
 
     let keys_values = dfs
@@ -113,11 +114,11 @@ fn simulation_run() -> PyResult<PyObject> {
         })
         .collect::<Vec<(String, PyObject)>>();
 
-    let return_type = Python::with_gil(|py| -> PyResult<PyObject> {
+    let return_dict = Python::with_gil(|py| -> PyResult<PyObject> {
         Ok((keys_values.into_py_dict(py)).to_object(py))
     });
 
-    return_type
+    return_dict
 }
 
 fn setup_camera(mut commands: Commands) {
