@@ -74,20 +74,28 @@ fn simulation_run() -> PyResult<PyObject> {
 
         let names = df.get_column_names_owned();
 
-        let vec_py_series = df
-            .columns(names)
+        let (arrows_series_list, names_list): (Vec<PyObject>, Vec<String>) = df
+            .columns(&names)
             .unwrap()
             .into_iter()
-            .map(|s| -> PyObject { utility::rust_series_to_py_series(s).unwrap() })
-            .collect::<Vec<PyObject>>();
+            .zip(names.into_iter())
+            .map(|(s, n)| -> (PyObject, String) {
+                Python::with_gil(|py| -> (PyObject, String) {
+                    (utility::rust_series_to_py_series(s).unwrap(), n)
+                })
+            })
+            .collect::<Vec<(PyObject, String)>>()
+            .into_iter()
+            .unzip();
 
         let returning_frame = Python::with_gil(|py| -> PyResult<PyObject> {
-            let list: &PyList = PyList::new(py, vec_py_series);
-            let arg = (list,);
+            let arg = (
+                PyList::new(py, arrows_series_list),
+                PyList::new(py, names_list),
+            );
 
             let pl = py.import("polars")?;
-            let maybe_what_i_want = pl.getattr("DataFrame")?;
-            let out = maybe_what_i_want.call1(arg)?;
+            let out = pl.call_method1("DataFrame", arg)?;
 
             Ok(out.to_object(py))
         })?;
@@ -180,9 +188,9 @@ fn exit_system(
     sender: Res<flume::Sender<Box<HashMap<String, Box<polars::frame::DataFrame>>>>>,
 ) {
     if time.seconds_since_startup() > 5.0 {
-        for mut r in record_components.iter_mut() {
-            let (mut name, df) = ((r.record_name).to_string(), r.dataframe.clone());
-            name.push_str(".csv");
+        for r in record_components.iter_mut() {
+            let (name, df) = ((r.record_name).to_string(), r.dataframe.clone());
+            // name.push_str(".csv");
             // let mut file = std::fs::File::create(&name).unwrap();
             // CsvWriter::new(&mut file).finish(&mut r.dataframe).unwrap();
 
