@@ -9,5 +9,8 @@ result = ps.simulation_run()
 
 
 print(result)
+result['Ball'].write_csv("Ball.csv")
+result['Ball'].write_parquet("Ball.parquet")
+
 
 
