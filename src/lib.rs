@@ -3,10 +3,10 @@ use bevy_rapier3d::prelude::*;
 use polars::prelude::*;
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyList, PyTuple};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
+mod dataframe_conversions;
 mod framework;
-mod utility;
 
 #[derive(Component, Default)]
 struct Record {
@@ -29,11 +29,11 @@ fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn simulation_run() -> PyResult<PyObject> {
+fn simulation_run(dt: f32, simulation_time: f32) -> PyResult<PyObject> {
     let world_timer = WorldTimer {
-        simulation_end_time: 5.0,
+        simulation_end_time: simulation_time,
         timer: bevy::time::Stopwatch::new(),
-        dt: 0.001,
+        dt: dt,
     };
 
     let config = RapierConfiguration {
@@ -96,35 +96,59 @@ fn advance_world_time(mut world_timer: ResMut<WorldTimer>) {
 /// during the sim into a format that can be pass back to python
 fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyResult<PyObject> {
     // Closure from HELL
+    // takes key, value pair from the dataframes hashmap and returns a tuple of name and python-polars dataframe
     let closure = |item: (String, Box<polars::frame::DataFrame>)| -> PyResult<(String, PyObject)> {
+        // destructure input tuple
         let df = *item.1;
         let key = item.0;
 
+        // need to own names of the columns for iterator purposes
         let names = df.get_column_names_owned();
 
+        // bruh i don't event know
+        // something about iterating over the dataframe to turn it into Apache Arrow Series and column names as Strings
         let (arrows_series_list, names_list): (Vec<PyObject>, Vec<String>) = df
+            // generate Vec of Apache Arrow Series from dataframe object
             .columns(&names)
+            // unwrap to handle errors. in the future should handle appropriately, but for now will always work
             .unwrap()
+            // turn Vec of Apache Arrow Series into an iteratore
             .into_iter()
+            // generate iterater over tuples of Series with their respective names
             .zip(names.into_iter())
+            // convert rust Series to python Series
             .map(|(s, n)| -> (PyObject, String) {
+                // I dunno man I hate python. fuckin global interpreter lock
                 Python::with_gil(|py| -> (PyObject, String) {
-                    (utility::rust_series_to_py_series(s).unwrap(), n)
+                    (
+                        //this function was copied was copied from reddit/stackoverflow/github
+                        dataframe_conversions::rust_series_to_py_series(s).unwrap(),
+                        n,
+                    )
                 })
             })
+            //gotta collect the output into a collection before we turn it into the tuple we want
             .collect::<Vec<(PyObject, String)>>()
+            // oh it's a collection now, so we have to call into_iterator because we need ownership I think
             .into_iter()
+            // oh NOW we can unzip. Look I'm glad this works, but it was really annoying.
+            // can't unzip without collecting cause compiler errors. kinda bothers me
             .unzip();
 
+        // This is a python tuple
+        // it contains a list of Arrow Series and a List of therir names
         let returning_frame = Python::with_gil(|py| -> PyResult<PyObject> {
             let arg = (
                 PyList::new(py, arrows_series_list),
                 PyList::new(py, names_list),
             );
 
+            // making sure the python environment has polars
             let pl = py.import("polars")?;
+            //construct polars DataFrame from Series and their names
             let out = pl.call_method1("DataFrame", arg)?;
 
+            //Return Python formatted valid dataframe
             Ok(out.to_object(py))
         })?;
 
@@ -160,7 +184,7 @@ fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyR
 fn setup_camera(mut commands: Commands) {
     // Add a camera so we can see the debug-render.
     commands.spawn_bundle(Camera3dBundle {
-        transform: Transform::from_xyz(-3.0, 3.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(-3.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 }
@@ -169,8 +193,8 @@ fn setup_physics(mut commands: Commands) {
     /* Create the ground. */
     commands
         .spawn()
-        .insert(Collider::cuboid(100.0, 0.1, 100.0))
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, -2.0, 0.0)));
+        .insert(Collider::cuboid(10000000.0, 0.1, 10000000.0))
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)));
 
     /* Create the bouncing ball. */
     commands
@@ -183,7 +207,11 @@ fn setup_physics(mut commands: Commands) {
             record_output: true,
             dataframe: polars::frame::DataFrame::default(),
         })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, 4.0, 0.0)));
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, 6.0, 0.0)))
+        .insert(Velocity {
+            linvel: Vec3::new(20.0, 0.0, 0.0),
+            angvel: Vec3::new(0.0, 0.0, 0.0),
+        });
 }
 
 fn initialize_records(mut record_components: Query<(&mut Record, &Transform)>) {

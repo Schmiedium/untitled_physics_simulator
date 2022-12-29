@@ -5,7 +5,7 @@ import polars as pl
 
 
 
-result = ps.simulation_run()
+result = ps.simulation_run(0.01, 5.0)
 
 
 print(result)
