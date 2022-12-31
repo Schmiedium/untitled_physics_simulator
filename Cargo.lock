@@ -3998,11 +3998,13 @@ dependencies = [
  "bevy_rapier3d",
  "flume",
  "iyes_loopless",
+ "parking_lot",
  "polars",
  "polars-arrow",
  "polars-core",
  "pyo3",
- "serde_json",
+ "ron",
+ "serde",
  "tobj",
 ]
 

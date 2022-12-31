@@ -32,7 +32,7 @@ struct DataFrameSender(flume::Sender<Box<HashMap<String, Box<polars::frame::Data
 #[pymodule]
 fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(simulation_run, m)?)?;
-
+    m.add_class::<simulation_builder::Simulation>()?;
     Ok(())
 }
 

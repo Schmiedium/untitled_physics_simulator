@@ -1,10 +1,13 @@
+use std::sync::Arc;
+
 use bevy::{
     prelude::{Component, Resource, Transform, Vec3},
-    reflect::{FromReflect, Reflect, TypeRegistryInternal},
+    reflect::{FromReflect, Reflect, TypeRegistry, TypeRegistryInternal},
     scene::{DynamicEntity, DynamicScene},
 };
 use bevy_rapier3d::prelude::{RigidBody, Velocity};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple};
+use serde::de::DeserializeSeed;
 
 #[pyclass]
 #[derive(Resource)]
@@ -15,18 +18,32 @@ pub struct Simulation {
 
 impl Clone for Simulation {
     fn clone(&self) -> Self {
-        let mut new_types = TypeRegistryInternal::new();
+        let mut new_types1 = TypeRegistryInternal::new();
         for registered_type in self.types.iter() {
-            new_types.add_registration(registered_type.clone());
+            new_types1.add_registration(registered_type.clone());
         }
 
-        let new_scene = DynamicScene {
-            entities: Vec::new(),
+        let mut new_types2 = TypeRegistryInternal::new();
+        for registered_type in self.types.iter() {
+            new_types2.add_registration(registered_type.clone());
+        }
+
+        let reg_arc = TypeRegistry {
+            internal: Arc::new(parking_lot::RwLock::new(new_types2)),
         };
+
+        let scene_ser = self.scene.serialize_ron(&reg_arc).unwrap();
+
+        let scene_deserializer = bevy::scene::serde::SceneDeserializer {
+            type_registry: &new_types1,
+        };
+        let mut deserializer = ron::de::Deserializer::from_str(&scene_ser).unwrap();
+
+        let new_scene = scene_deserializer.deserialize(&mut deserializer).unwrap();
 
         Self {
             scene: new_scene,
-            types: new_types,
+            types: new_types1,
         }
     }
 }
@@ -43,6 +60,7 @@ impl Simulation {
         }
     }
 
+    #[args()]
     pub fn create_entity(
         &mut self,
         index: u32,
