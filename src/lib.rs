@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
+use framework::simulation_builder;
 use polars::prelude::*;
 use pyo3::prelude::*;
-use pyo3::types::{IntoPyDict, PyList, PyTuple};
-use std::collections::{HashMap, VecDeque};
+use pyo3::types::{IntoPyDict, PyList};
+use std::collections::HashMap;
 
 mod dataframe_conversions;
 mod framework;
-
 
 #[derive(Component, Default)]
 struct Record {
@@ -16,11 +16,17 @@ struct Record {
     dataframe: polars::frame::DataFrame,
 }
 
+#[derive(Resource)]
 struct WorldTimer {
     simulation_end_time: Real,
     timer: bevy::time::Stopwatch,
     dt: f32,
 }
+#[derive(Resource)]
+struct DataframeStore(Box<HashMap<String, Box<polars::frame::DataFrame>>>);
+
+#[derive(Resource)]
+struct DataFrameSender(flume::Sender<Box<HashMap<String, Box<polars::frame::DataFrame>>>>);
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -31,7 +37,11 @@ fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn simulation_run(dt: f32, simulation_time: f32) -> PyResult<PyObject> {
+fn simulation_run(
+    dt: f32,
+    simulation_time: f32,
+    simulation: simulation_builder::Simulation,
+) -> PyResult<PyObject> {
     let world_timer = WorldTimer {
         simulation_end_time: simulation_time,
         timer: bevy::time::Stopwatch::new(),
@@ -47,26 +57,27 @@ fn simulation_run(dt: f32, simulation_time: f32) -> PyResult<PyObject> {
             substeps: 1,
         },
         scaled_shape_subdivision: 10,
+        force_update_from_transform_changes: default(),
     };
 
-    let dataframes: Box<HashMap<String, Box<polars::frame::DataFrame>>> = Box::new(HashMap::new());
+    let dataframes: DataframeStore = DataframeStore(Box::new(HashMap::new()));
     let (sender, receiver) =
         flume::unbounded::<Box<HashMap<String, Box<polars::frame::DataFrame>>>>();
 
     App::new()
-        .add_plugins_with(DefaultPlugins, |group| {
-            group.disable::<bevy::log::LogPlugin>()
-        })
+        .add_plugins(DefaultPlugins)
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(RapierDebugRenderPlugin::default())
+        .register_type::<simulation_builder::Name>()
         .insert_resource(config)
         .insert_resource(bevy::winit::WinitSettings {
             return_from_run: true,
             ..default()
         })
         .insert_resource(dataframes)
-        .insert_resource(sender)
+        .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(RapierDebugRenderPlugin::default())
+        .insert_resource(simulation)
         .add_startup_system(setup_camera)
         .add_startup_system(setup_physics)
         .add_startup_system(initialize_records)
@@ -114,20 +125,17 @@ fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyR
             .columns(&names)
             // unwrap to handle errors. in the future should handle appropriately, but for now will always work
             .unwrap()
-            // turn Vec of Apache Arrow Series into an iteratore
+            // turn Vec of Apache Arrow Series into an iterator
             .into_iter()
             // generate iterater over tuples of Series with their respective names
             .zip(names.into_iter())
             // convert rust Series to python Series
             .map(|(s, n)| -> (PyObject, String) {
-                // I dunno man I hate python. fuckin global interpreter lock
-                Python::with_gil(|py| -> (PyObject, String) {
-                    (
-                        //this function was copied was copied from reddit/stackoverflow/github
-                        dataframe_conversions::rust_series_to_py_series(s).unwrap(),
-                        n,
-                    )
-                })
+                (
+                    //this function was copied was copied from reddit/stackoverflow/github
+                    dataframe_conversions::rust_series_to_py_series(s).unwrap(),
+                    n,
+                )
             })
             //gotta collect the output into a collection before we turn it into the tuple we want
             .collect::<Vec<(PyObject, String)>>()
@@ -185,35 +193,46 @@ fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyR
 
 fn setup_camera(mut commands: Commands) {
     // Add a camera so we can see the debug-render.
-    commands.spawn_bundle(Camera3dBundle {
+    commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(-3.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 }
 
-fn setup_physics(mut commands: Commands) {
+fn setup_physics(
+    mut commands: Commands,
+    input: Res<simulation_builder::Simulation>,
+    mut scene: ResMut<Assets<DynamicScene>>,
+) {
     /* Create the ground. */
-    commands
-        .spawn()
-        .insert(Collider::cuboid(10000000.0, 0.1, 10000000.0))
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)));
+    commands.spawn((
+        Collider::cuboid(10000000.0, 0.1, 10000000.0),
+        TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)),
+    ));
+
+    let scene_handle = scene.add(input.to_owned().scene);
+
+    commands.spawn(DynamicSceneBundle {
+        scene: scene_handle,
+        ..default()
+    });
 
     /* Create the bouncing ball. */
-    commands
-        .spawn()
-        .insert(RigidBody::Dynamic)
-        .insert(Collider::ball(0.5))
-        .insert(Restitution::coefficient(0.7))
-        .insert(Record {
+    commands.spawn((
+        RigidBody::Dynamic,
+        Collider::ball(0.5),
+        Restitution::coefficient(0.7),
+        Record {
             record_name: "Ball".to_string(),
             record_output: true,
             dataframe: polars::frame::DataFrame::default(),
-        })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(0.0, 6.0, 0.0)))
-        .insert(Velocity {
+        },
+        TransformBundle::from(Transform::from_xyz(0.0, 6.0, 0.0)),
+        Velocity {
             linvel: Vec3::new(20.0, 0.0, 0.0),
             angvel: Vec3::new(0.0, 0.0, 0.0),
-        });
+        },
+    ));
 }
 
 fn initialize_records(mut record_components: Query<(&mut Record, &Transform)>) {
@@ -259,8 +278,8 @@ fn exit_system(
     world_timer: Res<WorldTimer>,
     mut record_components: Query<&mut Record>,
     mut exit: EventWriter<bevy::app::AppExit>,
-    mut records: ResMut<Box<HashMap<String, Box<polars::frame::DataFrame>>>>,
-    sender: Res<flume::Sender<Box<HashMap<String, Box<polars::frame::DataFrame>>>>>,
+    mut records: ResMut<DataframeStore>,
+    sender: Res<DataFrameSender>,
 ) {
     //Determine if exit criterion is met
     if world_timer.timer.elapsed_secs() > world_timer.simulation_end_time {
@@ -271,13 +290,15 @@ fn exit_system(
             let (name, df) = ((r.record_name).to_string(), r.dataframe.clone());
 
             // insert name and dataframe into the hashmap holding onto the data
-            records.insert(name, Box::<polars::frame::DataFrame>::new(df));
+            records
+                .0
+                .insert(name, Box::<polars::frame::DataFrame>::new(df));
         }
         // Clone the resource hashmap into something returnable
-        let return_map = records.clone();
+        let return_map = records.0.clone();
 
         // send returnable hashmap back to main thread
-        sender.send(return_map).unwrap();
+        sender.0.send(return_map).unwrap();
 
         // Send AppExit event to quit the simualtion
         exit.send(bevy::app::AppExit);
