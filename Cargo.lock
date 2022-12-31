@@ -3997,6 +3997,7 @@ dependencies = [
  "bevy",
  "bevy_rapier3d",
  "flume",
+ "glam",
  "iyes_loopless",
  "parking_lot",
  "polars",

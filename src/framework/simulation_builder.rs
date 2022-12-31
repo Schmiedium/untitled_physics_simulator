@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bevy::{
-    prelude::{Component, Resource, Transform, Vec3},
+    prelude::{Component, ReflectComponent, Resource, Transform, Vec3},
     reflect::{FromReflect, Reflect, TypeRegistry, TypeRegistryInternal},
     scene::{DynamicEntity, DynamicScene},
 };
@@ -60,7 +60,6 @@ impl Simulation {
         }
     }
 
-    #[args()]
     pub fn create_entity(
         &mut self,
         index: u32,
@@ -118,7 +117,10 @@ impl Simulation {
         self.types.register::<Transform>();
         self.types.register::<Velocity>();
         self.types.register::<RigidBody>();
+        self.types.register::<glam::Quat>();
+        self.types.register::<glam::Vec3>();
         self.types.register::<Name>();
+        self.types.register::<String>();
 
         //End registering types
 
@@ -141,5 +143,6 @@ impl Simulation {
     }
 }
 
-#[derive(Component, Reflect, FromReflect)]
+#[derive(Component, Reflect, FromReflect, Default)]
+#[reflect(Component)]
 pub struct Name(String);
