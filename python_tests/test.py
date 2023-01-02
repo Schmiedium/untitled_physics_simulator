@@ -17,7 +17,7 @@ sim.create_entity(index = 12, name = "test10", entity_type = "Dynamic", position
 sim.create_entity(index = 13, name = "test11", entity_type = "Dynamic", position = (7.0, 10.0, -10.0), velocity = (0.0, 0.0, 0.0), geometry = "/home/alex/Documents/3D_Geometry/OBJs/dodecahedron.obj")
 sim.create_entity(index = 14, name = "test12", entity_type = "Dynamic", position = (0.0, 20.0, -10.0), velocity = (0.0, 0.0, 0.0), geometry = "/home/alex/Documents/3D_Geometry/OBJs/dodecahedron.obj")
 
-result = ps.simulation_run_headless(sim)
+result = ps.simulation_run(sim)
 
 
 print(result)
