@@ -206,7 +206,6 @@ fn setup_physics(
     input: Res<simulation_builder::Simulation>,
     mut scene: ResMut<Assets<DynamicScene>>,
 ) {
-    println!("entered setup_physics");
     /* Create the ground. */
     commands.spawn((
         Collider::cuboid(10000000.0, 0.1, 10000000.0),
