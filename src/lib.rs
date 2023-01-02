@@ -34,6 +34,7 @@ struct DataFrameSender(flume::Sender<Box<HashMap<String, Box<polars::frame::Data
 #[pymodule]
 fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(simulation_run, m)?)?;
+    m.add_function(wrap_pyfunction!(simulation_run_headless, m)?)?;
     m.add_class::<simulation_builder::Simulation>()?;
     Ok(())
 }
@@ -64,17 +65,65 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(RapierDebugRenderPlugin::default())
-        .register_type::<simulation_builder::Name>()
-        .register_type::<simulation_builder::Shape>()
-        .register_type::<simulation_builder::ColliderInitializer>()
-        .register_type::<simulation_builder::RecordInitializer>()
+        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroup)
         .insert_resource(config)
+        .insert_resource(dataframes)
+        .insert_resource(DataFrameSender(sender))
+        .insert_resource(world_timer)
+        .insert_resource(simulation)
         .insert_resource(bevy::winit::WinitSettings {
             return_from_run: true,
-            ..default()
+            ..bevy::prelude::default()
         })
+        .add_startup_system(setup_camera)
+        .add_startup_system(setup_physics)
+        .add_system(initialize_records)
+        .add_system(initialize_colliders)
+        .add_system(advance_world_time)
+        .add_system(update_records.after(initialize_records))
+        .add_system(exit_system)
+        .run();
+
+    let dfs = *receiver.recv().unwrap();
+
+    if dfs.is_empty() {
+        println!("QUACK");
+        return Python::with_gil(|py| -> PyResult<PyObject> {
+            Ok("no data to return".to_object(py))
+        });
+    }
+
+    dataframe_hashmap_to_python_dict(dfs)
+}
+
+#[pyfunction]
+fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResult<PyObject> {
+    let world_timer = WorldTimer {
+        simulation_end_time: simulation.sim_duration,
+        timer: bevy::time::Stopwatch::new(),
+        dt: simulation.timestep,
+    };
+
+    let config = RapierConfiguration {
+        gravity: Vect::Y * -9.81,
+        physics_pipeline_active: true,
+        query_pipeline_active: true,
+        timestep_mode: TimestepMode::Fixed {
+            dt: world_timer.dt,
+            substeps: 1,
+        },
+        scaled_shape_subdivision: 10,
+        force_update_from_transform_changes: default(),
+    };
+
+    let dataframes: DataframeStore = DataframeStore(Box::new(HashMap::new()));
+    let (sender, receiver) =
+        flume::unbounded::<Box<HashMap<String, Box<polars::frame::DataFrame>>>>();
+
+    App::new()
+        .add_plugins(MinimalPlugins)
+        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroupHeadless)
+        .insert_resource(config)
         .insert_resource(dataframes)
         .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
