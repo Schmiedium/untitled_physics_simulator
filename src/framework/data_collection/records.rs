@@ -18,12 +18,23 @@ pub struct DataframeStore(pub Box<HashMap<String, Box<polars::frame::DataFrame>>
 #[derive(Resource)]
 pub struct DataFrameSender(pub flume::Sender<Box<HashMap<String, Box<polars::frame::DataFrame>>>>);
 
+/// Record components don't implement Reflect, and therefore cannot be serialized
+/// Since cloning the simulation class requires serialization, something else must be done
+/// The RecordInitializer carries the information needed to setup a record
+/// This system finds all RecordInitializer objects, makes the record components, adds them to the appropriate entity,
+/// and then removes the RecordInitializer component
+///
+/// This can probably be done better/more efficiently if done with events or something
+/// same with ColliderInitializer
+///
+/// allow unused variables is here the recordinitializer is a unit struct
 #[allow(unused_variables)]
 pub fn initialize_records(
     mut commands: Commands,
     query_entities: Query<(Entity, &Name, &RecordInitializer, &Transform)>,
     world_timer: Res<WorldTimer>,
 ) {
+    // iterator over all entities found by the query
     for (e, n, r_i, t) in query_entities.iter() {
         // Get reference to position from the transform
         let position = &t.translation;
@@ -32,11 +43,14 @@ pub fn initialize_records(
 
         commands
             .entity(e)
-            .insert(Record {
-                record_name: n.0.clone(),
-                record_output: true,
-                dataframe: new_row,
-            })
+            .insert(
+                //create the record to be added
+                Record {
+                    record_name: n.0.clone(),
+                    record_output: true,
+                    dataframe: new_row,
+                },
+            )
             .remove::<RecordInitializer>();
     }
 }

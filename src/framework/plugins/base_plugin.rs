@@ -31,6 +31,7 @@ pub struct WorldTimer {
     pub dt: f32,
 }
 
+// Increments the world time by one timestep
 fn advance_world_time(mut world_timer: ResMut<WorldTimer>) {
     let step = world_timer.dt;
     world_timer
@@ -43,7 +44,6 @@ fn advance_world_time(mut world_timer: ResMut<WorldTimer>) {
 /// * system that that determines exit functionality
 /// * need to be updated to accept a simulation end time, and quit after
 /// * also need to figure out move semantics to avoid the disgusting double clone of all the dataframes
-///
 ///
 fn exit_system(
     world_timer: Res<WorldTimer>,
