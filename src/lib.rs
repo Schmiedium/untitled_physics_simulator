@@ -71,10 +71,6 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
         .insert_resource(simulation)
-        .insert_resource(bevy::winit::WinitSettings {
-            return_from_run: true,
-            ..bevy::prelude::default()
-        })
         .add_startup_system(setup_camera)
         .add_startup_system(setup_physics)
         .add_system(initialize_records)
@@ -128,7 +124,6 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
         .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
         .insert_resource(simulation)
-        .add_startup_system(setup_camera)
         .add_startup_system(setup_physics)
         .add_system(initialize_records)
         .add_system(initialize_colliders)
@@ -382,6 +377,7 @@ fn exit_system(
     mut records: ResMut<DataframeStore>,
     sender: Res<DataFrameSender>,
 ) {
+    println!("entered exit_system");
     //Determine if exit criterion is met
     if world_timer.timer.elapsed_secs() > world_timer.simulation_end_time {
         // Iterate over all the record components found by the query

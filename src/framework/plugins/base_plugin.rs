@@ -10,5 +10,9 @@ impl Plugin for BasePlugin {
         app.register_type::<simulation_builder::Shape>();
         app.register_type::<simulation_builder::ColliderInitializer>();
         app.register_type::<simulation_builder::RecordInitializer>();
+        app.insert_resource(bevy::winit::WinitSettings {
+            return_from_run: true,
+            ..bevy::prelude::default()
+        });
     }
 }

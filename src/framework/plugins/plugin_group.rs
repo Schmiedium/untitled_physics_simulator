@@ -25,9 +25,10 @@ impl PluginGroup for UntitledPluginsGroupHeadless {
             .add(bevy::transform::TransformPlugin::default())
             .add(bevy::window::WindowPlugin::default())
             .add(bevy::scene::ScenePlugin::default())
+            .add(bevy::winit::WinitPlugin::default())
             .add(bevy::render::RenderPlugin::default())
             .add(bevy::render::texture::ImagePlugin::default())
-            .add(RapierPhysicsPlugin::<NoUserData>::default())
             .add(BasePlugin)
+            .add(RapierPhysicsPlugin::<NoUserData>::default())
     }
 }
