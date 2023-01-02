@@ -5,13 +5,15 @@ use bevy::{
     reflect::{FromReflect, Reflect, TypeRegistry, TypeRegistryInternal},
     scene::{DynamicEntity, DynamicScene},
 };
-use bevy_rapier3d::prelude::{RigidBody, Velocity};
+use bevy_rapier3d::prelude::{Real, RigidBody, Velocity};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple};
 use serde::de::DeserializeSeed;
 
 #[pyclass]
 #[derive(Resource)]
 pub struct Simulation {
+    pub timestep: Real,
+    pub sim_duration: Real,
     pub scene: DynamicScene,
     pub types: TypeRegistryInternal,
 }
@@ -42,6 +44,8 @@ impl Clone for Simulation {
         let new_scene = scene_deserializer.deserialize(&mut deserializer).unwrap();
 
         Self {
+            timestep: self.timestep,
+            sim_duration: self.sim_duration,
             scene: new_scene,
             types: new_types1,
         }
@@ -51,13 +55,31 @@ impl Clone for Simulation {
 #[pymethods]
 impl Simulation {
     #[new]
-    fn new() -> Self {
-        Simulation {
+    fn new(timestep: Real, sim_duration: Real) -> Self {
+        let mut new_sim = Simulation {
+            timestep: timestep,
+            sim_duration: sim_duration,
             scene: DynamicScene {
                 entities: Vec::new(),
             },
             types: TypeRegistryInternal::new(),
-        }
+        };
+
+        //Register all types with the type registry
+        //necessary for serialization
+
+        new_sim.types.register::<Transform>();
+        new_sim.types.register::<Velocity>();
+        new_sim.types.register::<RigidBody>();
+        new_sim.types.register::<glam::Quat>();
+        new_sim.types.register::<glam::Vec3>();
+        new_sim.types.register::<String>();
+        new_sim.types.register::<Name>();
+        new_sim.types.register::<RecordInitializer>();
+
+        //End registering types
+
+        new_sim
     }
 
     pub fn create_entity(
@@ -108,21 +130,9 @@ impl Simulation {
         let vel_comp_b = Box::new(vel_comp);
         let body_b = Box::new(body);
         let n_b = Box::new(n);
+        let ri_b = Box::new(RecordInitializer());
 
         //End boxing all entities
-
-        //Register all types with the type registry
-        //necessary for serialization
-
-        self.types.register::<Transform>();
-        self.types.register::<Velocity>();
-        self.types.register::<RigidBody>();
-        self.types.register::<glam::Quat>();
-        self.types.register::<glam::Vec3>();
-        self.types.register::<Name>();
-        self.types.register::<String>();
-
-        //End registering types
 
         //initialize data store for constucting simulation object
         let mut components: Vec<Box<dyn Reflect>> = Vec::new();
@@ -131,6 +141,7 @@ impl Simulation {
         components.push(vel_comp_b);
         components.push(body_b);
         components.push(n_b);
+        components.push(ri_b);
 
         let entity = DynamicEntity {
             entity: index,
@@ -145,4 +156,10 @@ impl Simulation {
 
 #[derive(Component, Reflect, FromReflect, Default)]
 #[reflect(Component)]
-pub struct Name(String);
+pub struct Name(pub String);
+
+#[derive(Component, Reflect, FromReflect, Default)]
+#[reflect(Component)]
+pub struct RecordInitializer();
+
+impl RecordInitializer {}

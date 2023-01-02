@@ -3,10 +3,10 @@ import pyarrow
 import polars as pl
 
 
-sim = ps.Simulation()
-sim.create_entity(3, "test", "Dynamic", (10.0, 0.0, 0.0), (0.0, 0.0, 0.0))
+sim = ps.Simulation(0.01, 5.0)
+sim.create_entity(index = 3, name = "test", entity_type = "Dynamic", position = (10.0, 0.0, 0.0), velocity = (0.0, 0.0, 0.0))
 
-result = ps.simulation_run(0.01, 5.0, sim)
+result = ps.simulation_run(sim)
 
 
 print(result)
