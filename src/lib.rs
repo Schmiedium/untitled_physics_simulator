@@ -1,12 +1,14 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
-use framework::simulation_builder;
+use framework::{
+    data_collection::dataframe_conversions, geometry::geometry_parsing,
+    py_modules::simulation_builder,
+};
 use polars::prelude::*;
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyList};
 use std::collections::HashMap;
 
-mod dataframe_conversions;
 mod framework;
 
 #[derive(Component, Default)]
@@ -65,6 +67,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
         .register_type::<simulation_builder::Name>()
+        .register_type::<simulation_builder::ColliderInitializer>()
         .register_type::<simulation_builder::RecordInitializer>()
         .insert_resource(config)
         .insert_resource(bevy::winit::WinitSettings {
@@ -78,6 +81,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .add_startup_system(setup_camera)
         .add_startup_system(setup_physics)
         .add_system(initialize_records)
+        .add_system(initialize_colliders)
         .add_system(advance_world_time)
         .add_system(update_records.after(initialize_records))
         .add_system(exit_system)
@@ -214,7 +218,7 @@ fn setup_physics(
         Collider::ball(0.5),
         Restitution::coefficient(0.7),
         simulation_builder::Name("Ball".to_string()),
-        simulation_builder::RecordInitializer(),
+        simulation_builder::RecordInitializer,
         // Record {
         //     record_name: "Ball".to_string(),
         //     record_output: true,
@@ -235,6 +239,7 @@ fn setup_physics(
     });
 }
 
+#[allow(unused_variables)]
 fn initialize_records(
     mut commands: Commands,
     query_entities: Query<(
@@ -263,14 +268,45 @@ fn initialize_records(
     }
 }
 
+fn initialize_colliders(
+    mut commands: Commands,
+    meshes: ResMut<Assets<Mesh>>,
+    server: Res<AssetServer>,
+    q: Query<(Entity, &simulation_builder::ColliderInitializer)>,
+) {
+    for (e, c_i) in q.iter() {
+        let path = &*c_i.0.clone();
+        let m_handle = server.load(path);
+
+        let m = match meshes.get(&m_handle) {
+            Some(m) => m,
+            None => {
+                error!("Cannot load mesh from {}, path likely invalid", c_i.0);
+                panic!();
+            }
+        };
+
+        let c = Collider::from_bevy_mesh(
+            m,
+            &ComputedColliderShape::ConvexDecomposition(VHACDParameters::default()),
+        )
+        .unwrap();
+
+        commands
+            .entity(e)
+            .insert((c, Restitution::coefficient(0.7)))
+            .remove::<simulation_builder::ColliderInitializer>();
+    }
+}
+
 /// system to query for all entities that have both Record and Transform components
 /// grabs data from the transform and records it to the record component
 fn update_records(
-    mut record_components: Query<(Entity, &simulation_builder::Name, &mut Record, &Transform)>,
+    mut record_components: Query<(&mut Record, &Transform)>,
     world_timer: Res<WorldTimer>,
 ) {
     // iterate over query results, destructuring the returned tuple
-    for (e, n, mut r, t) in record_components.iter_mut() {
+    for (mut r, t) in record_components.iter_mut() {
         // check if we should be recording data for this record component
         if r.record_output {
             // Get reference to position from the transform

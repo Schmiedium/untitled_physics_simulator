@@ -76,6 +76,7 @@ impl Simulation {
         new_sim.types.register::<String>();
         new_sim.types.register::<Name>();
         new_sim.types.register::<RecordInitializer>();
+        new_sim.types.register::<ColliderInitializer>();
 
         //End registering types
 
@@ -89,6 +90,7 @@ impl Simulation {
         entity_type: String,
         position: &PyTuple,
         velocity: &PyTuple,
+        geometry: String,
     ) -> PyResult<()> {
         //BEGIN Setup all necessary components
 
@@ -122,6 +124,8 @@ impl Simulation {
             angvel: Vec3::new(0.0, 0.0, 0.0),
         };
 
+        let ci = ColliderInitializer(geometry);
+
         //END setting up necessary components
 
         //Begin boxing all entities for storage in the scene
@@ -130,7 +134,8 @@ impl Simulation {
         let vel_comp_b = Box::new(vel_comp);
         let body_b = Box::new(body);
         let n_b = Box::new(n);
-        let ri_b = Box::new(RecordInitializer());
+        let ri_b = Box::new(RecordInitializer);
+        let ci_b = Box::new(ci);
 
         //End boxing all entities
 
@@ -142,6 +147,7 @@ impl Simulation {
         components.push(body_b);
         components.push(n_b);
         components.push(ri_b);
+        components.push(ci_b);
 
         let entity = DynamicEntity {
             entity: index,
@@ -160,6 +166,12 @@ pub struct Name(pub String);
 
 #[derive(Component, Reflect, FromReflect, Default)]
 #[reflect(Component)]
-pub struct RecordInitializer();
+pub struct RecordInitializer;
 
 impl RecordInitializer {}
+
+#[derive(Component, Reflect, FromReflect, Default)]
+#[reflect(Component)]
+pub struct ColliderInitializer(pub String);
+
+impl ColliderInitializer {}
