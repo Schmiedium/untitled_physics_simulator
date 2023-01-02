@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
+use framework::data_collection::records::{DataFrameSender, DataframeStore};
+use framework::plugins::base_plugin::WorldTimer;
 use framework::{
     data_collection::dataframe_conversions, geometry::geometry_parsing,
     py_modules::simulation_builder,
@@ -10,25 +12,6 @@ use pyo3::types::{IntoPyDict, PyList};
 use std::collections::HashMap;
 
 mod framework;
-
-#[derive(Component, Default)]
-struct Record {
-    record_name: String,
-    record_output: bool,
-    dataframe: polars::frame::DataFrame,
-}
-
-#[derive(Resource)]
-struct WorldTimer {
-    simulation_end_time: Real,
-    timer: bevy::time::Stopwatch,
-    dt: f32,
-}
-#[derive(Resource)]
-struct DataframeStore(Box<HashMap<String, Box<polars::frame::DataFrame>>>);
-
-#[derive(Resource)]
-struct DataFrameSender(flume::Sender<Box<HashMap<String, Box<polars::frame::DataFrame>>>>);
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -65,7 +48,6 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
 
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroup)
         .insert_resource(config)
         .insert_resource(dataframes)
         .insert_resource(DataFrameSender(sender))
@@ -73,11 +55,8 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .insert_resource(simulation)
         .add_startup_system(setup_camera)
         .add_startup_system(setup_physics)
-        .add_system(initialize_records)
         .add_system(initialize_colliders)
-        .add_system(advance_world_time)
-        .add_system(update_records.after(initialize_records))
-        .add_system(exit_system)
+        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroup)
         .run();
 
     let dfs = *receiver.recv().unwrap();
@@ -118,18 +97,14 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
 
     App::new()
         .add_plugins(MinimalPlugins)
-        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroupHeadless)
         .insert_resource(config)
         .insert_resource(dataframes)
         .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
         .insert_resource(simulation)
         .add_startup_system(setup_physics)
-        .add_system(initialize_records)
         .add_system(initialize_colliders)
-        .add_system(advance_world_time)
-        .add_system(update_records.after(initialize_records))
-        .add_system(exit_system)
+        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroupHeadless)
         .run();
 
     let dfs = *receiver.recv().unwrap();
@@ -142,13 +117,6 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
     }
 
     dataframe_hashmap_to_python_dict(dfs)
-}
-
-fn advance_world_time(mut world_timer: ResMut<WorldTimer>) {
-    let step = world_timer.dt;
-    world_timer
-        .timer
-        .tick(std::time::Duration::from_secs_f32(step));
 }
 
 /// This is not a bevy system, but a function extracted from main for converting the data collected
@@ -256,24 +224,24 @@ fn setup_physics(
         TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)),
     ));
 
-    /* Create the bouncing ball. */
-    commands.spawn((
-        RigidBody::Dynamic,
-        Collider::ball(0.5),
-        Restitution::coefficient(0.7),
-        simulation_builder::Name("Ball".to_string()),
-        simulation_builder::RecordInitializer,
-        // Record {
-        //     record_name: "Ball".to_string(),
-        //     record_output: true,
-        //     dataframe: polars::frame::DataFrame::default(),
-        // },
-        TransformBundle::from(Transform::from_xyz(0.0, 6.0, 0.0)),
-        Velocity {
-            linvel: Vec3::new(0.0, 0.0, 0.0),
-            angvel: Vec3::new(0.0, 0.0, 0.0),
-        },
-    ));
+    // /* Create the bouncing ball. */
+    // commands.spawn((
+    //     RigidBody::Dynamic,
+    //     Collider::ball(0.5),
+    //     Restitution::coefficient(0.7),
+    //     simulation_builder::Name("Ball".to_string()),
+    //     simulation_builder::RecordInitializer,
+    //     // Record {
+    //     //     record_name: "Ball".to_string(),
+    //     //     record_output: true,
+    //     //     dataframe: polars::frame::DataFrame::default(),
+    //     // },
+    //     TransformBundle::from(Transform::from_xyz(0.0, 6.0, 0.0)),
+    //     Velocity {
+    //         linvel: Vec3::new(0.0, 0.0, 0.0),
+    //         angvel: Vec3::new(0.0, 0.0, 0.0),
+    //     },
+    // ));
 
     let scene_handle = scene.add(input.to_owned().scene);
 
@@ -281,34 +249,6 @@ fn setup_physics(
         scene: scene_handle,
         ..default()
     });
-}
-
-#[allow(unused_variables)]
-fn initialize_records(
-    mut commands: Commands,
-    query_entities: Query<(
-        Entity,
-        &simulation_builder::Name,
-        &simulation_builder::RecordInitializer,
-        &Transform,
-    )>,
-    world_timer: Res<WorldTimer>,
-) {
-    for (e, n, r_i, t) in query_entities.iter() {
-        // Get reference to position from the transform
-        let position = &t.translation;
-        // create new row to add to the dataframe
-        let new_row = polars::df!["Time" => [world_timer.timer.elapsed_secs()], "Position_X" => [position.x], "Position_Y" => [position.y], "Position_Z" => [position.z]].unwrap();
-
-        commands
-            .entity(e)
-            .insert(Record {
-                record_name: n.0.clone(),
-                record_output: true,
-                dataframe: new_row,
-            })
-            .remove::<simulation_builder::RecordInitializer>();
-    }
 }
 
 fn initialize_colliders(
@@ -339,65 +279,5 @@ fn initialize_colliders(
                 };
             }
         }
-    }
-}
-
-/// system to query for all entities that have both Record and Transform components
-/// grabs data from the transform and records it to the record component
-fn update_records(
-    mut record_components: Query<(&mut Record, &Transform)>,
-    world_timer: Res<WorldTimer>,
-) {
-    // iterate over query results, destructuring the returned tuple
-    for (mut r, t) in record_components.iter_mut() {
-        // check if we should be recording data for this record component
-        if r.record_output {
-            // Get reference to position from the transform
-            let position = &t.translation;
-            // create new row to add to the dataframe
-            let new_row = polars::df!["Time" => [world_timer.timer.elapsed_secs()], "Position_X" => [position.x], "Position_Y" => [position.y], "Position_Z" => [position.z]].unwrap();
-
-            // Call vstack_mut function with the newly created row to append to dataframe
-            r.dataframe.vstack_mut(&new_row).unwrap();
-        }
-    }
-}
-
-///
-/// # Exit System
-/// * system that that determines exit functionality
-/// * need to be updated to accept a simulation end time, and quit after
-/// * also need to figure out move semantics to avoid the disgusting double clone of all the dataframes
-///
-///
-fn exit_system(
-    world_timer: Res<WorldTimer>,
-    mut record_components: Query<&mut Record>,
-    mut exit: EventWriter<bevy::app::AppExit>,
-    mut records: ResMut<DataframeStore>,
-    sender: Res<DataFrameSender>,
-) {
-    println!("entered exit_system");
-    //Determine if exit criterion is met
-    if world_timer.timer.elapsed_secs() > world_timer.simulation_end_time {
-        // Iterate over all the record components found by the query
-        for r in record_components.iter_mut() {
-            // Destructure the record component into name and dataframe variables
-            // Clone one is here and need to figure out how to remove it
-            let (name, df) = ((r.record_name).to_string(), r.dataframe.clone());
-
-            // insert name and dataframe into the hashmap holding onto the data
-            records
-                .0
-                .insert(name, Box::<polars::frame::DataFrame>::new(df));
-        }
-        // Clone the resource hashmap into something returnable
-        let return_map = records.0.clone();
-
-        // send returnable hashmap back to main thread
-        sender.0.send(return_map).unwrap();
-
-        // Send AppExit event to quit the simualtion
-        exit.send(bevy::app::AppExit);
     }
 }
