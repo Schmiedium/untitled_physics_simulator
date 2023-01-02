@@ -31,6 +31,7 @@ print(result)
 #Optionally write dataframes to csv or parquet
 #These are polars dataframes, so you an do whatever with them
 
+
 # result['test12'].write_csv("test12.csv")
 # result['test7'].write_parquet("test7.parquet")
 
