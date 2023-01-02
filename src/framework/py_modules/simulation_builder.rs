@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use bevy::{
-    prelude::{Component, ReflectComponent, Resource, Transform, Vec3},
+    prelude::{Component, GlobalTransform, ReflectComponent, Resource, Transform, Vec3},
     reflect::{FromReflect, Reflect, TypeRegistry, TypeRegistryInternal},
     scene::{DynamicEntity, DynamicScene},
+    transform::TransformBundle,
 };
 use bevy_rapier3d::prelude::{Real, RigidBody, Velocity};
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple};
@@ -69,10 +70,14 @@ impl Simulation {
         //necessary for serialization
 
         new_sim.types.register::<Transform>();
+        new_sim.types.register::<GlobalTransform>();
         new_sim.types.register::<Velocity>();
         new_sim.types.register::<RigidBody>();
         new_sim.types.register::<glam::Quat>();
         new_sim.types.register::<glam::Vec3>();
+        new_sim.types.register::<glam::Vec3A>();
+        new_sim.types.register::<glam::Affine3A>();
+        new_sim.types.register::<glam::Mat3A>();
         new_sim.types.register::<String>();
         new_sim.types.register::<Name>();
         new_sim.types.register::<RecordInitializer>();
@@ -114,7 +119,10 @@ impl Simulation {
         //extract position vector components from input tuple
         let pos: (f32, f32, f32) = position.extract()?;
         //build transform component bundle to handle position
-        let trans = Transform::from_xyz(pos.0, pos.1, pos.2);
+        let trans_bundle =
+            TransformBundle::from_transform(Transform::from_xyz(pos.0, pos.1, pos.2));
+        let trans = trans_bundle.local;
+        let gtrans = trans_bundle.global;
 
         //extract velocity vector components from input tuple
         let vel: (f32, f32, f32) = velocity.extract()?;
@@ -131,6 +139,7 @@ impl Simulation {
         //Begin boxing all entities for storage in the scene
 
         let trans_b = Box::new(trans);
+        let gtrans_b = Box::new(gtrans);
         let vel_comp_b = Box::new(vel_comp);
         let body_b = Box::new(body);
         let n_b = Box::new(n);
@@ -143,6 +152,7 @@ impl Simulation {
         let mut components: Vec<Box<dyn Reflect>> = Vec::new();
 
         components.push(trans_b);
+        components.push(gtrans_b);
         components.push(vel_comp_b);
         components.push(body_b);
         components.push(n_b);

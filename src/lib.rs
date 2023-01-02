@@ -8,6 +8,7 @@ use polars::prelude::*;
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyList};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 mod framework;
 
@@ -250,7 +251,6 @@ fn initialize_records(
     )>,
     world_timer: Res<WorldTimer>,
 ) {
-    println!("printing names: {}", !query_entities.is_empty());
     for (e, n, r_i, t) in query_entities.iter() {
         // Get reference to position from the transform
         let position = &t.translation;
@@ -270,32 +270,20 @@ fn initialize_records(
 
 fn initialize_colliders(
     mut commands: Commands,
-    meshes: ResMut<Assets<Mesh>>,
-    server: Res<AssetServer>,
     q: Query<(Entity, &simulation_builder::ColliderInitializer)>,
 ) {
     for (e, c_i) in q.iter() {
-        let path = &*c_i.0.clone();
-        let m_handle = server.load(path);
+        let path = PathBuf::from(&*c_i.0.clone());
 
-        let m = match meshes.get(&m_handle) {
-            Some(m) => m,
-            None => {
-                error!("Cannot load mesh from {}, path likely invalid", c_i.0);
-                panic!();
+        if let Ok(colliders) = geometry_parsing::parse_obj_into_trimesh(path, 1.0) {
+            commands
+                .entity(e)
+                .insert(Restitution::coefficient(0.7))
+                .remove::<simulation_builder::ColliderInitializer>();
+            for c in colliders {
+                commands.entity(e).insert(c);
             }
         };
-
-        let c = Collider::from_bevy_mesh(
-            m,
-            &ComputedColliderShape::ConvexDecomposition(VHACDParameters::default()),
-        )
-        .unwrap();
-
-        commands
-            .entity(e)
-            .insert((c, Restitution::coefficient(0.7)))
-            .remove::<simulation_builder::ColliderInitializer>();
     }
 }
 
