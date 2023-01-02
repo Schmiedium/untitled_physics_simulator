@@ -48,6 +48,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
 
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroup)
         .insert_resource(config)
         .insert_resource(dataframes)
         .insert_resource(DataFrameSender(sender))
@@ -56,7 +57,6 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .add_startup_system(setup_camera)
         .add_startup_system(setup_physics)
         .add_system(initialize_colliders)
-        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroup)
         .run();
 
     let dfs = *receiver.recv().unwrap();
