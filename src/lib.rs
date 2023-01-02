@@ -8,7 +8,6 @@ use polars::prelude::*;
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyList};
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 mod framework;
 
@@ -68,6 +67,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
         .register_type::<simulation_builder::Name>()
+        .register_type::<simulation_builder::Shape>()
         .register_type::<simulation_builder::ColliderInitializer>()
         .register_type::<simulation_builder::RecordInitializer>()
         .insert_resource(config)
@@ -271,18 +271,30 @@ fn initialize_colliders(
     mut commands: Commands,
     q: Query<(Entity, &simulation_builder::ColliderInitializer)>,
 ) {
-    for (e, c_i) in q.iter() {
-        let path = PathBuf::from(&*c_i.0.clone());
+    for (e, ci) in q.iter() {
+        commands
+            .entity(e)
+            .insert(Restitution::coefficient(0.7))
+            .remove::<simulation_builder::ColliderInitializer>();
 
-        if let Ok(colliders) = geometry_parsing::parse_obj_into_trimesh(path, 1.0) {
-            commands
-                .entity(e)
-                .insert(Restitution::coefficient(0.7))
-                .remove::<simulation_builder::ColliderInitializer>();
-            for c in colliders {
-                commands.entity(e).insert(c);
+        match ci.shape {
+            simulation_builder::Shape::Trimesh => {
+                if let Ok(colliders) = geometry_parsing::parse_obj_into_trimeshes(&ci.path, 1.0) {
+                    for c in colliders {
+                        commands.entity(e).insert(c);
+                    }
+                };
             }
-        };
+            simulation_builder::Shape::Computed => {
+                if let Ok(colliders) =
+                    geometry_parsing::parse_obj_into_computed_shape(&ci.path, 1.0)
+                {
+                    for c in colliders {
+                        commands.entity(e).insert(c);
+                    }
+                };
+            }
+        }
     }
 }
 

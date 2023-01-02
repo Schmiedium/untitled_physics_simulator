@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use bevy::{
     prelude::{Component, GlobalTransform, ReflectComponent, Resource, Transform, Vec3},
@@ -69,6 +69,11 @@ impl Simulation {
         //Register all types with the type registry
         //necessary for serialization
 
+        //RUST STD TYPES
+        new_sim.types.register::<String>();
+        new_sim.types.register::<PathBuf>();
+
+        //RAPIER TYPES
         new_sim.types.register::<Transform>();
         new_sim.types.register::<GlobalTransform>();
         new_sim.types.register::<Velocity>();
@@ -78,8 +83,10 @@ impl Simulation {
         new_sim.types.register::<glam::Vec3A>();
         new_sim.types.register::<glam::Affine3A>();
         new_sim.types.register::<glam::Mat3A>();
-        new_sim.types.register::<String>();
+
+        //MY CUSTOM TYPES
         new_sim.types.register::<Name>();
+        new_sim.types.register::<Shape>();
         new_sim.types.register::<RecordInitializer>();
         new_sim.types.register::<ColliderInitializer>();
 
@@ -132,7 +139,10 @@ impl Simulation {
             angvel: Vec3::new(0.0, 0.0, 0.0),
         };
 
-        let ci = ColliderInitializer(geometry);
+        let ci = ColliderInitializer {
+            path: PathBuf::from(geometry),
+            shape: Shape::Trimesh,
+        };
 
         //END setting up necessary components
 
@@ -182,6 +192,17 @@ impl RecordInitializer {}
 
 #[derive(Component, Reflect, FromReflect, Default)]
 #[reflect(Component)]
-pub struct ColliderInitializer(pub String);
+pub struct ColliderInitializer {
+    pub path: PathBuf,
+    pub shape: Shape,
+}
+
+#[derive(Reflect, FromReflect, Default)]
+
+pub enum Shape {
+    #[default]
+    Trimesh,
+    Computed,
+}
 
 impl ColliderInitializer {}
