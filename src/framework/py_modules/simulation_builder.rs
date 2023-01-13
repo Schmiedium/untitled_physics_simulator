@@ -58,8 +58,8 @@ impl Simulation {
     #[new]
     fn new(timestep: Real, sim_duration: Real) -> Self {
         let mut new_sim = Simulation {
-            timestep: timestep,
-            sim_duration: sim_duration,
+            timestep,
+            sim_duration,
             scene: DynamicScene {
                 entities: Vec::new(),
             },
@@ -159,19 +159,12 @@ impl Simulation {
         //End boxing all entities
 
         //initialize data store for constucting simulation object
-        let mut components: Vec<Box<dyn Reflect>> = Vec::new();
-
-        components.push(trans_b);
-        components.push(gtrans_b);
-        components.push(vel_comp_b);
-        components.push(body_b);
-        components.push(n_b);
-        components.push(ri_b);
-        components.push(ci_b);
+        let components: Vec<Box<dyn Reflect>> =
+            vec![trans_b, gtrans_b, vel_comp_b, body_b, n_b, ri_b, ci_b];
 
         let entity = DynamicEntity {
             entity: index,
-            components: components,
+            components,
         };
 
         self.scene.entities.push(entity);

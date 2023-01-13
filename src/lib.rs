@@ -50,14 +50,13 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
 
     // DataframeStore is a tuple struct with one element, this facilitates getting output data from bevy
     // once the app is done running
-    let dataframes: DataframeStore = DataframeStore(Box::new(HashMap::new()));
+    let dataframes: DataframeStore = DataframeStore(HashMap::new());
 
     // Create flume sender and receiver, for sending data between threads
     // Bevy is designed to be super parallel, so something like this is necessary
     // The sender goes inside the app, and will send the Hashmap of dataframes back out on simulation exit
     // The receiver stays here and will receive the sent data
-    let (sender, receiver) =
-        flume::unbounded::<Box<HashMap<String, Box<polars::frame::DataFrame>>>>();
+    let (sender, receiver) = flume::unbounded::<HashMap<String, Box<polars::frame::DataFrame>>>();
 
     // Instantiation of the app. This is the bevy app that will run rapier and everything else
     // This sets up and runs the sim
@@ -80,7 +79,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .run();
 
     // receiver from earlier checks if anything has been sent, panincs if there is no sender (usually means app didn't run)
-    let dfs = *receiver.recv().unwrap();
+    let dfs = receiver.recv().unwrap();
 
     // check if data was returned or not. if not, return early
     if dfs.is_empty() {
@@ -120,14 +119,13 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
 
     // DataframeStore is a tuple struct with one element, this facilitates getting output data from bevy
     // once the app is done running
-    let dataframes: DataframeStore = DataframeStore(Box::new(HashMap::new()));
+    let dataframes: DataframeStore = DataframeStore(HashMap::new());
 
     // Create flume sender and receiver, for sending data between threads
     // Bevy is designed to be super parallel, so something like this is necessary
     // The sender goes inside the app, and will send the Hashmap of dataframes back out on simulation exit
     // The receiver stays here and will receive the sent data
-    let (sender, receiver) =
-        flume::unbounded::<Box<HashMap<String, Box<polars::frame::DataFrame>>>>();
+    let (sender, receiver) = flume::unbounded::<HashMap<String, Box<polars::frame::DataFrame>>>();
 
     // Instantiation of the app. This is the bevy app that will run rapier and everything else
     // This sets up and runs the sim
@@ -143,7 +141,7 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
         .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroupHeadless)
         .run();
 
-    let dfs = *receiver.recv().unwrap();
+    let dfs = receiver.recv().unwrap();
 
     if dfs.is_empty() {
         println!("QUACK");
@@ -158,7 +156,7 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
 /// This is not a bevy system, but a function extracted from main for converting the data collected
 /// during the sim into a format that can be pass back to python
 fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyResult<PyObject> {
-    // Closure from HELL
+    // This is a somewhat arcane closure, which will be passed to a map function later
     // takes key, value pair from the dataframes hashmap and returns a tuple of name and python-polars dataframe
     let closure = |item: (String, Box<polars::frame::DataFrame>)| -> PyResult<(String, PyObject)> {
         // destructure input tuple
@@ -168,7 +166,6 @@ fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyR
         // need to own names of the columns for iterator purposes
         let names = df.get_column_names_owned();
 
-        // bruh i don't event know
         // something about iterating over the dataframe to turn it into Apache Arrow Series and column names as Strings
         let (arrows_series_list, names_list): (Vec<PyObject>, Vec<String>) = df
             // generate Vec of Apache Arrow Series from dataframe object
@@ -189,14 +186,13 @@ fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyR
             })
             //gotta collect the output into a collection before we turn it into the tuple we want
             .collect::<Vec<(PyObject, String)>>()
-            // oh it's a collection now, so we have to call into_iterator because we need ownership I think
+            // It's a collection now, so we have to call into_iterator because we need ownership I think
             .into_iter()
-            // oh NOW we can unzip. Look I'm glad this works, but it was really annoying.
-            // can't unzip without collecting cause compiler errors. kinda bothers me
+            // unzip into the data structure we want
             .unzip();
 
         // This is a python tuple
-        // it contains a list of Arrow Series and a List of therir names
+        // it contains a list of Arrow Series and a List of their names
         let returning_frame = Python::with_gil(|py| -> PyResult<PyObject> {
             let arg = (
                 PyList::new(py, arrows_series_list),
@@ -215,11 +211,16 @@ fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyR
         Ok((key, returning_frame))
     };
 
+    //End arcane closure
+
+    // iterate over the hashmap passed in and return a python dictionary of names and dataframes
     let keys_values = dfs
         .into_iter()
         .collect::<Vec<(String, Box<polars::frame::DataFrame>)>>()
         .into_iter()
+        // call map with the arcane closure above
         .map(closure)
+        // map that result to the interior of the result, as a python object
         .map(|py_res| -> (String, PyObject) {
             match py_res {
                 Ok(x) => x,
@@ -234,11 +235,10 @@ fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyR
         })
         .collect::<Vec<(String, PyObject)>>();
 
-    let return_dict = Python::with_gil(|py| -> PyResult<PyObject> {
+    // construct python dictionary object, and then return it
+    Python::with_gil(|py| -> PyResult<PyObject> {
         Ok((keys_values.into_py_dict(py)).to_object(py))
-    });
-
-    return_dict
+    })
 }
 
 /// Sets up a camera to view whatever is rendering

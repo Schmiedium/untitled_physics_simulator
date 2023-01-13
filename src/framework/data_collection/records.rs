@@ -13,10 +13,10 @@ pub struct Record {
 }
 
 #[derive(Resource)]
-pub struct DataframeStore(pub Box<HashMap<String, Box<polars::frame::DataFrame>>>);
+pub struct DataframeStore(pub HashMap<String, Box<polars::frame::DataFrame>>);
 
 #[derive(Resource)]
-pub struct DataFrameSender(pub flume::Sender<Box<HashMap<String, Box<polars::frame::DataFrame>>>>);
+pub struct DataFrameSender(pub flume::Sender<HashMap<String, Box<polars::frame::DataFrame>>>);
 
 /// Record components don't implement Reflect, and therefore cannot be serialized
 /// Since cloning the simulation class requires serialization, something else must be done
