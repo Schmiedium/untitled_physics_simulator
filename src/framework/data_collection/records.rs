@@ -9,7 +9,7 @@ use std::collections::HashMap;
 pub struct Record {
     pub record_name: String,
     pub record_output: bool,
-    pub dataframe: polars::frame::DataFrame,
+    pub dataframe: Box<polars::frame::DataFrame>,
 }
 
 #[derive(Resource)]
@@ -48,7 +48,7 @@ pub fn initialize_records(
                 Record {
                     record_name: n.0.clone(),
                     record_output: true,
-                    dataframe: new_row,
+                    dataframe: Box::new(new_row),
                 },
             )
             .remove::<RecordInitializer>();

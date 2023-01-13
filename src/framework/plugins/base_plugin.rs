@@ -42,12 +42,12 @@ fn advance_world_time(mut world_timer: ResMut<WorldTimer>) {
 ///
 /// # Exit System
 /// * system that that determines exit functionality
-/// * need to be updated to accept a simulation end time, and quit after
-/// * also need to figure out move semantics to avoid the disgusting double clone of all the dataframes
+/// * I think I figured out the move semantics, I refactored Record to store a Box<dataframe> and I'm
+/// * cloning the box instead. Need to validate that, but it should be correct
 ///
 fn exit_system(
     world_timer: Res<WorldTimer>,
-    mut record_components: Query<&mut Record>,
+    record_components: Query<&Record>,
     mut exit: EventWriter<bevy::app::AppExit>,
     mut records: ResMut<DataframeStore>,
     sender: Res<DataFrameSender>,
@@ -55,15 +55,12 @@ fn exit_system(
     //Determine if exit criterion is met
     if world_timer.timer.elapsed_secs() > world_timer.simulation_end_time {
         // Iterate over all the record components found by the query
-        for r in record_components.iter_mut() {
+        for r in record_components.iter() {
             // Destructure the record component into name and dataframe variables
-            // Clone one is here and need to figure out how to remove it
             let (name, df) = ((r.record_name).to_string(), r.dataframe.clone());
 
             // insert name and dataframe into the hashmap holding onto the data
-            records
-                .0
-                .insert(name, Box::<polars::frame::DataFrame>::new(df));
+            records.0.insert(name, df);
         }
         // Clone the resource hashmap into something returnable
         let return_map = records.0.clone();
