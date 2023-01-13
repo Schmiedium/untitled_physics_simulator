@@ -1,6 +1,7 @@
 import untitled_physics_simulator as ps
 import pyarrow
 import polars as pl
+import sys
 
 #create simulation with 0.001 seconds per timestep, and a sim duration of 5.0 seconds. ~5000 steps
 sim = ps.Simulation(0.001, 5.0)

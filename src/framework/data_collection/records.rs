@@ -4,19 +4,20 @@ use crate::framework::py_modules::simulation_builder::{Name, RecordInitializer};
 use bevy::prelude::{Commands, Component, Entity, Query, Res, Resource, Transform};
 use polars::prelude::NamedFrom;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Component, Default)]
 pub struct Record {
     pub record_name: String,
     pub record_output: bool,
-    pub dataframe: Box<polars::frame::DataFrame>,
+    pub dataframe: Arc<polars::frame::DataFrame>,
 }
 
 #[derive(Resource)]
-pub struct DataframeStore(pub HashMap<String, Box<polars::frame::DataFrame>>);
+pub struct DataframeStore(pub HashMap<String, Arc<polars::frame::DataFrame>>);
 
 #[derive(Resource)]
-pub struct DataFrameSender(pub flume::Sender<HashMap<String, Box<polars::frame::DataFrame>>>);
+pub struct DataFrameSender(pub flume::Sender<HashMap<String, Arc<polars::frame::DataFrame>>>);
 
 /// Record components don't implement Reflect, and therefore cannot be serialized
 /// Since cloning the simulation class requires serialization, something else must be done
@@ -48,7 +49,7 @@ pub fn initialize_records(
                 Record {
                     record_name: n.0.clone(),
                     record_output: true,
-                    dataframe: Box::new(new_row),
+                    dataframe: Arc::new(new_row),
                 },
             )
             .remove::<RecordInitializer>();
@@ -71,7 +72,7 @@ pub fn update_records(
             let new_row = polars::df!["Time" => [world_timer.timer.elapsed_secs()], "Position_X" => [position.x], "Position_Y" => [position.y], "Position_Z" => [position.z]].unwrap();
 
             // Call vstack_mut function with the newly created row to append to dataframe
-            r.dataframe.vstack_mut(&new_row).unwrap();
+            r.dataframe = Arc::new(r.dataframe.vstack(&new_row).unwrap());
         }
     }
 }

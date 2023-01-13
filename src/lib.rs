@@ -56,7 +56,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
     // Bevy is designed to be super parallel, so something like this is necessary
     // The sender goes inside the app, and will send the Hashmap of dataframes back out on simulation exit
     // The receiver stays here and will receive the sent data
-    let (sender, receiver) = flume::unbounded::<HashMap<String, Box<polars::frame::DataFrame>>>();
+    let (sender, receiver) = flume::unbounded::<HashMap<String, Arc<polars::frame::DataFrame>>>();
 
     // Instantiation of the app. This is the bevy app that will run rapier and everything else
     // This sets up and runs the sim
@@ -125,7 +125,7 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
     // Bevy is designed to be super parallel, so something like this is necessary
     // The sender goes inside the app, and will send the Hashmap of dataframes back out on simulation exit
     // The receiver stays here and will receive the sent data
-    let (sender, receiver) = flume::unbounded::<HashMap<String, Box<polars::frame::DataFrame>>>();
+    let (sender, receiver) = flume::unbounded::<HashMap<String, Arc<polars::frame::DataFrame>>>();
 
     // Instantiation of the app. This is the bevy app that will run rapier and everything else
     // This sets up and runs the sim
@@ -155,12 +155,12 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
 
 /// This is not a bevy system, but a function extracted from main for converting the data collected
 /// during the sim into a format that can be pass back to python
-fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyResult<PyObject> {
+fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Arc<DataFrame>>) -> PyResult<PyObject> {
     // This is a somewhat arcane closure, which will be passed to a map function later
     // takes key, value pair from the dataframes hashmap and returns a tuple of name and python-polars dataframe
-    let closure = |item: (String, Box<polars::frame::DataFrame>)| -> PyResult<(String, PyObject)> {
+    let closure = |item: (String, Arc<polars::frame::DataFrame>)| -> PyResult<(String, PyObject)> {
         // destructure input tuple
-        let df = *item.1;
+        let df = &*item.1;
         let key = item.0;
 
         // need to own names of the columns for iterator purposes
@@ -216,7 +216,7 @@ fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Box<DataFrame>>) -> PyR
     // iterate over the hashmap passed in and return a python dictionary of names and dataframes
     let keys_values = dfs
         .into_iter()
-        .collect::<Vec<(String, Box<polars::frame::DataFrame>)>>()
+        .collect::<Vec<(String, Arc<polars::frame::DataFrame>)>>()
         .into_iter()
         // call map with the arcane closure above
         .map(closure)
@@ -275,9 +275,9 @@ fn setup_physics(
 
 /// Colliders don't implement Reflect, and therefore cannot be serialized
 /// Since cloning the simulation class requires serialization, something else must be done
-/// The ColliderInitializer carries the information needed to setup a pre-specified collider
-/// This system finds all ColliderInitializer objects, makes the colliders, adds them to the appropriate entity,
-/// and then removes the ColliderInitializer component
+/// The `ColliderInitializer` carries the information needed to setup a pre-specified collider
+/// This system finds all `ColliderInitializer` objects, makes the colliders, adds them to the appropriate entity,
+/// and then removes the `ColliderInitializer` component
 ///
 /// This can probably be done better/more efficiently if done with events or something
 /// same with RecordInitializer
