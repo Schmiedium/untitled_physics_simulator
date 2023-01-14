@@ -68,11 +68,8 @@ fn exit_system(
     if world_timer.timer.elapsed_secs() > world_timer.simulation_end_time {
         // Iterate over all the record components found by the query
         for r in record_components.iter() {
-            // Destructure the record component into name and dataframe variables
-            let (name, df) = ((r.record_name).to_string(), r.dataframe.clone());
-
             // insert name and dataframe into the hashmap holding onto the data
-            records.0.insert(name, df);
+            records.0.push(r.dataframes.clone());
         }
         // Clone the resource hashmap into something returnable
         let return_map = records.0.clone();

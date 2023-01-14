@@ -30,14 +30,14 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
 
     // DataframeStore is a tuple struct with one element, this facilitates getting output data from bevy
     // once the app is done running
-    let dataframes: DataframeStore = DataframeStore(HashMap::new());
+    let dataframes: DataframeStore = DataframeStore(Vec::new());
 
     // Create flume sender and receiver, for sending data between threads
     // Bevy is designed to be super parallel, so something like this is necessary
     // The sender goes inside the app, and will send the Hashmap of dataframes back out on simulation exit
     // The receiver stays here and will receive the sent data
     let (sender, receiver) =
-        flume::unbounded::<HashMap<String, Arc<RwLock<polars::frame::DataFrame>>>>();
+        flume::unbounded::<Vec<Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>>();
 
     // Instantiation of the app. This is the bevy app that will run rapier and everything else
     // This sets up and runs the sim
@@ -83,14 +83,14 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
 
     // DataframeStore is a tuple struct with one element, this facilitates getting output data from bevy
     // once the app is done running
-    let dataframes: DataframeStore = DataframeStore(HashMap::new());
+    let dataframes: DataframeStore = DataframeStore(Vec::new());
 
     // Create flume sender and receiver, for sending data between threads
     // Bevy is designed to be super parallel, so something like this is necessary
     // The sender goes inside the app, and will send the Hashmap of dataframes back out on simulation exit
     // The receiver stays here and will receive the sent data
     let (sender, receiver) =
-        flume::unbounded::<HashMap<String, Arc<RwLock<polars::frame::DataFrame>>>>();
+        flume::unbounded::<Vec<Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>>();
 
     // Instantiation of the app. This is the bevy app that will run rapier and everything else
     // This sets up and runs the sim
