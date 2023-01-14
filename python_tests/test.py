@@ -24,7 +24,7 @@ sim.create_entity(index = 14, name = "test12", entity_type = "Dynamic", position
 
 #run the simulation with a render, render can be turned off by using simulation_run_headless
 #store the output data in a variable
-result = ps.simulation_run(sim)
+result = ps.simulation_run_headless(sim)
 
 #print the output
 print(result)

@@ -1,9 +1,8 @@
+use super::base_plugin::BasePlugin;
 use bevy::app::PluginGroupBuilder;
 use bevy::prelude::PluginGroup;
 use bevy_rapier3d::prelude::{NoUserData, RapierPhysicsPlugin};
 use bevy_rapier3d::render::RapierDebugRenderPlugin;
-
-use super::base_plugin::BasePlugin;
 
 pub struct UntitledPluginsGroup;
 

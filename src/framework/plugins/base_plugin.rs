@@ -1,7 +1,11 @@
-use crate::framework::data_collection::records::{
-    initialize_records, update_records, DataFrameSender, DataframeStore, Record,
+use crate::framework::{
+    data_collection::records::{
+        initialize_records, update_records, DataFrameSender, DataframeStore, Record,
+    },
+    geometry::geometry_parsing,
 };
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::Collider;
 
 use crate::framework::py_modules::simulation_builder;
 
@@ -17,6 +21,8 @@ impl Plugin for BasePlugin {
             return_from_run: true,
             ..bevy::prelude::default()
         });
+        app.add_startup_system(setup_physics);
+        app.add_system(initialize_colliders);
         app.add_system(initialize_records);
         app.add_system(update_records.after(initialize_records));
         app.add_system(advance_world_time);
@@ -70,5 +76,67 @@ fn exit_system(
 
         // Send AppExit event to quit the simualtion
         exit.send(bevy::app::AppExit);
+    }
+}
+
+/// Sets up all the entities specified in the simulation
+/// should probably change the name
+fn setup_physics(
+    mut commands: Commands,
+    input: Res<simulation_builder::Simulation>,
+    mut scene: ResMut<Assets<DynamicScene>>,
+) {
+    /* Create the ground. */
+    commands.spawn((
+        Collider::cuboid(10000000.0, 0.1, 10000000.0),
+        TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)),
+    ));
+
+    //grabs the simulation resource, gets the Dynamic scene within, and gets a handle to that scene
+    let scene_handle = scene.add(input.to_owned().scene);
+
+    // spawns the scene using the handle above
+    commands.spawn(DynamicSceneBundle {
+        scene: scene_handle,
+        ..default()
+    });
+}
+
+/// Colliders don't implement Reflect, and therefore cannot be serialized
+/// Since cloning the simulation class requires serialization, something else must be done
+/// The `ColliderInitializer` carries the information needed to setup a pre-specified collider
+/// This system finds all `ColliderInitializer` objects, makes the colliders, adds them to the appropriate entity,
+/// and then removes the `ColliderInitializer` component
+///
+/// This can probably be done better/more efficiently if done with events or something
+/// same with RecordInitializer
+fn initialize_colliders(
+    mut commands: Commands,
+    q: Query<(Entity, &simulation_builder::ColliderInitializer)>,
+) {
+    for (e, ci) in q.iter() {
+        commands
+            .entity(e)
+            .insert(bevy_rapier3d::prelude::Restitution::coefficient(0.7))
+            .remove::<simulation_builder::ColliderInitializer>();
+
+        match ci.shape {
+            simulation_builder::Shape::Trimesh => {
+                if let Ok(colliders) = geometry_parsing::parse_obj_into_trimeshes(&ci.path, 1.0) {
+                    for c in colliders {
+                        commands.entity(e).insert(c);
+                    }
+                };
+            }
+            simulation_builder::Shape::Computed => {
+                if let Ok(colliders) =
+                    geometry_parsing::parse_obj_into_computed_shape(&ci.path, 1.0)
+                {
+                    for c in colliders {
+                        commands.entity(e).insert(c);
+                    }
+                };
+            }
+        }
     }
 }

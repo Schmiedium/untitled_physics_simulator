@@ -2,10 +2,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use framework::data_collection::records::{DataFrameSender, DataframeStore};
 use framework::plugins::base_plugin::WorldTimer;
-use framework::{
-    data_collection::dataframe_conversions, geometry::geometry_parsing,
-    py_modules::simulation_builder,
-};
+use framework::{data_collection::dataframe_conversions, py_modules::simulation_builder};
 use polars::prelude::*;
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyList};
@@ -29,24 +26,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
     // Create world timer resource
     // This will interact with the timing system to make sure we advance and stop
     // with the correct timinings
-    let world_timer = WorldTimer {
-        simulation_end_time: simulation.sim_duration,
-        timer: bevy::time::Stopwatch::new(),
-        dt: simulation.timestep,
-    };
-
-    //Rapier is the physics engine, this sets up the configuration resource for that engine
-    let config = RapierConfiguration {
-        gravity: Vect::Y * -9.81,
-        physics_pipeline_active: true,
-        query_pipeline_active: true,
-        timestep_mode: TimestepMode::Fixed {
-            dt: world_timer.dt,
-            substeps: 1,
-        },
-        scaled_shape_subdivision: 10,
-        force_update_from_transform_changes: default(),
-    };
+    let (world_timer, config) = setup_sim_resources(simulation.sim_duration, simulation.timestep);
 
     // DataframeStore is a tuple struct with one element, this facilitates getting output data from bevy
     // once the app is done running
@@ -73,24 +53,23 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         //setting up the camera for rendering
         .add_startup_system(setup_camera)
         // see setup_physics function for details
-        .add_startup_system(setup_physics)
         // this should be redone with events or something
-        .add_system(initialize_colliders)
         .run();
 
     // receiver from earlier checks if anything has been sent, panincs if there is no sender (usually means app didn't run)
     let dfs = receiver.recv().unwrap();
 
-    // check if data was returned or not. if not, return early
-    if dfs.is_empty() {
-        println!("QUACK");
-        return Python::with_gil(|py| -> PyResult<PyObject> {
-            Ok("no data to return".to_object(py))
-        });
-    }
-
     // call function to convert our hashmap into a python dictionary usable in python, and return it
     dataframe_hashmap_to_python_dict(dfs)
+}
+
+/// Sets up a camera to view whatever is rendering
+fn setup_camera(mut commands: Commands) {
+    // Add a camera so we can see the debug-render.
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(-3.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..Default::default()
+    });
 }
 
 #[pyfunction]
@@ -98,24 +77,8 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
     // Create world timer resource
     // This will interact with the timing system to make sure we advance and stop
     // with the correct timinings
-    let world_timer = WorldTimer {
-        simulation_end_time: simulation.sim_duration,
-        timer: bevy::time::Stopwatch::new(),
-        dt: simulation.timestep,
-    };
 
-    //Rapier is the physics engine, this sets up the configuration resource for that engine
-    let config = RapierConfiguration {
-        gravity: Vect::Y * -9.81,
-        physics_pipeline_active: true,
-        query_pipeline_active: true,
-        timestep_mode: TimestepMode::Fixed {
-            dt: world_timer.dt,
-            substeps: 1,
-        },
-        scaled_shape_subdivision: 10,
-        force_update_from_transform_changes: default(),
-    };
+    let (world_timer, config) = setup_sim_resources(simulation.sim_duration, simulation.timestep);
 
     // DataframeStore is a tuple struct with one element, this facilitates getting output data from bevy
     // once the app is done running
@@ -136,13 +99,40 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
         .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
         .insert_resource(simulation)
-        .add_startup_system(setup_physics)
-        .add_system(initialize_colliders)
         .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroupHeadless)
         .run();
 
     let dfs = receiver.recv().unwrap();
 
+    dataframe_hashmap_to_python_dict(dfs)
+}
+
+fn setup_sim_resources(sim_duration: f32, timestep: f32) -> (WorldTimer, RapierConfiguration) {
+    let world_timer = WorldTimer {
+        simulation_end_time: sim_duration,
+        timer: bevy::time::Stopwatch::new(),
+        dt: timestep,
+    };
+
+    //Rapier is the physics engine, this sets up the configuration resource for that engine
+    let config = RapierConfiguration {
+        gravity: Vect::Y * -9.81,
+        physics_pipeline_active: true,
+        query_pipeline_active: true,
+        timestep_mode: TimestepMode::Fixed {
+            dt: world_timer.dt,
+            substeps: 1,
+        },
+        scaled_shape_subdivision: 10,
+        force_update_from_transform_changes: default(),
+    };
+
+    (world_timer, config)
+}
+
+/// This is not a bevy system, but a function extracted from main for converting the data collected
+/// during the sim into a format that can be pass back to python
+fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Arc<DataFrame>>) -> PyResult<PyObject> {
     if dfs.is_empty() {
         println!("QUACK");
         return Python::with_gil(|py| -> PyResult<PyObject> {
@@ -150,12 +140,6 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
         });
     }
 
-    dataframe_hashmap_to_python_dict(dfs)
-}
-
-/// This is not a bevy system, but a function extracted from main for converting the data collected
-/// during the sim into a format that can be pass back to python
-fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Arc<DataFrame>>) -> PyResult<PyObject> {
     // This is a somewhat arcane closure, which will be passed to a map function later
     // takes key, value pair from the dataframes hashmap and returns a tuple of name and python-polars dataframe
     let closure = |item: (String, Arc<polars::frame::DataFrame>)| -> PyResult<(String, PyObject)> {
@@ -239,75 +223,4 @@ fn dataframe_hashmap_to_python_dict(dfs: HashMap<String, Arc<DataFrame>>) -> PyR
     Python::with_gil(|py| -> PyResult<PyObject> {
         Ok((keys_values.into_py_dict(py)).to_object(py))
     })
-}
-
-/// Sets up a camera to view whatever is rendering
-fn setup_camera(mut commands: Commands) {
-    // Add a camera so we can see the debug-render.
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(-3.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..Default::default()
-    });
-}
-
-/// Sets up all the entities specified in the simulation
-/// should probably change the name
-fn setup_physics(
-    mut commands: Commands,
-    input: Res<simulation_builder::Simulation>,
-    mut scene: ResMut<Assets<DynamicScene>>,
-) {
-    /* Create the ground. */
-    commands.spawn((
-        Collider::cuboid(10000000.0, 0.1, 10000000.0),
-        TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)),
-    ));
-
-    //grabs the simulation resource, gets the Dynamic scene within, and gets a handle to that scene
-    let scene_handle = scene.add(input.to_owned().scene);
-
-    // spawns the scene using the handle above
-    commands.spawn(DynamicSceneBundle {
-        scene: scene_handle,
-        ..default()
-    });
-}
-
-/// Colliders don't implement Reflect, and therefore cannot be serialized
-/// Since cloning the simulation class requires serialization, something else must be done
-/// The `ColliderInitializer` carries the information needed to setup a pre-specified collider
-/// This system finds all `ColliderInitializer` objects, makes the colliders, adds them to the appropriate entity,
-/// and then removes the `ColliderInitializer` component
-///
-/// This can probably be done better/more efficiently if done with events or something
-/// same with RecordInitializer
-fn initialize_colliders(
-    mut commands: Commands,
-    q: Query<(Entity, &simulation_builder::ColliderInitializer)>,
-) {
-    for (e, ci) in q.iter() {
-        commands
-            .entity(e)
-            .insert(Restitution::coefficient(0.7))
-            .remove::<simulation_builder::ColliderInitializer>();
-
-        match ci.shape {
-            simulation_builder::Shape::Trimesh => {
-                if let Ok(colliders) = geometry_parsing::parse_obj_into_trimeshes(&ci.path, 1.0) {
-                    for c in colliders {
-                        commands.entity(e).insert(c);
-                    }
-                };
-            }
-            simulation_builder::Shape::Computed => {
-                if let Ok(colliders) =
-                    geometry_parsing::parse_obj_into_computed_shape(&ci.path, 1.0)
-                {
-                    for c in colliders {
-                        commands.entity(e).insert(c);
-                    }
-                };
-            }
-        }
-    }
 }
