@@ -13,33 +13,43 @@ pub struct Record {
 
 #[bevy_trait_query::queryable]
 pub trait RecordTrait {
-    fn initialize_record(&self, record: &Record, index: u32, name: String, time: f32) {
-        Record::default();
-    }
+    fn initialize_record(&self, record: &Record, index: u32, name: String, time: f32);
 
-    fn update_record(&self, record: &Record, time: f32, name: String) -> PolarsResult<()> {
-        Ok(())
-    }
+    fn update_record(
+        &self,
+        record: &Record,
+        time: f32,
+        index: u32,
+        name: String,
+    ) -> PolarsResult<()>;
 }
 
 impl RecordTrait for Transform {
     fn initialize_record(&self, record: &Record, index: u32, name: String, time: f32) {
         let first_row = polars::df!["Time" => [time], "Position_X" => [self.translation.x], "Position_Y" => [self.translation.y], "Position_Z" => [self.translation.z]].unwrap();
+        let k = format!("{}_{}_Position", name, index.to_string());
 
         match record.dataframes.write() {
             Ok(mut rw_guard) => {
-                rw_guard.insert(name, first_row);
+                rw_guard.insert(k, first_row);
             }
             Err(_) => todo!(),
         }
     }
 
-    fn update_record(&self, record: &Record, time: f32, name: String) -> PolarsResult<()> {
+    fn update_record(
+        &self,
+        record: &Record,
+        time: f32,
+        index: u32,
+        name: String,
+    ) -> PolarsResult<()> {
         let new_row = &polars::df!["Time" => [time], "Position_X" => [self.translation.x], "Position_Y" => [self.translation.y], "Position_Z" => [self.translation.z]].unwrap();
+        let k = format!("{}_{}_Position", name, index.to_string());
 
         match record.dataframes.clone().write() {
             Ok(mut df) => {
-                df.get_mut(&name).unwrap().vstack_mut(new_row)?;
+                df.get_mut(&k).unwrap().vstack_mut(new_row)?;
                 Ok(())
             }
             Err(_) => todo!(),
@@ -105,6 +115,7 @@ pub fn update_records(
             match recording_component.update_record(
                 record,
                 world_timer.timer.elapsed_secs(),
+                e.index(),
                 name.0.clone(),
             ) {
                 Ok(_) => {}
