@@ -1,11 +1,12 @@
 use crate::framework::{
     data_collection::records::{
-        initialize_records, update_records, DataFrameSender, DataframeStore, Record,
+        initialize_records, update_records, DataFrameSender, DataframeStore, Record, RecordTrait,
     },
     geometry::geometry_parsing,
 };
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::Collider;
+use bevy_trait_query::RegisterExt;
 
 use crate::framework::py_modules::simulation_builder;
 
@@ -17,6 +18,7 @@ impl Plugin for BasePlugin {
         app.register_type::<simulation_builder::Shape>();
         app.register_type::<simulation_builder::ColliderInitializer>();
         app.register_type::<simulation_builder::RecordInitializer>();
+        app.register_component_as::<dyn RecordTrait, Transform>();
         app.insert_resource(bevy::winit::WinitSettings {
             return_from_run: true,
             ..bevy::prelude::default()
@@ -24,7 +26,11 @@ impl Plugin for BasePlugin {
         app.add_startup_system(setup_physics);
         app.add_system(initialize_colliders);
         app.add_system(initialize_records);
-        app.add_system(update_records.after(initialize_records));
+        app.add_system(
+            update_records
+                .after(initialize_records)
+                .after(advance_world_time),
+        );
         app.add_system(advance_world_time);
         app.add_system(exit_system);
     }

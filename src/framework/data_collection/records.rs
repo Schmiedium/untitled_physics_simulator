@@ -2,22 +2,63 @@ use crate::framework::plugins::base_plugin::WorldTimer;
 
 use crate::framework::py_modules::simulation_builder::{Name, RecordInitializer};
 use bevy::prelude::{Commands, Component, Entity, Query, Res, Resource, Transform};
-use polars::prelude::NamedFrom;
+use polars::prelude::{NamedFrom, PolarsResult};
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 #[derive(Component, Default)]
 pub struct Record {
     pub record_name: String,
-    pub record_output: bool,
-    pub dataframe: Arc<polars::frame::DataFrame>,
+    pub dataframe: Arc<RwLock<polars::frame::DataFrame>>,
+}
+
+#[bevy_trait_query::queryable]
+pub trait RecordTrait {
+    fn initialize_record(&self, index: u32, name: String, time: f32) -> Record {
+        Record::default()
+    }
+
+    fn update_record(
+        &self,
+        record: Arc<RwLock<polars::frame::DataFrame>>,
+        time: f32,
+    ) -> PolarsResult<()> {
+        Ok(())
+    }
+}
+
+impl RecordTrait for Transform {
+    fn initialize_record(&self, index: u32, name: String, time: f32) -> Record {
+        Record {
+            record_name: format!("Position for: {}_{}", name, index),
+            dataframe: Arc::new(RwLock::new(polars::df!["Time" => [time], "Position_X" => [self.translation.x], "Position_Y" => [self.translation.y], "Position_Z" => [self.translation.z]].unwrap())),
+        }
+    }
+
+    fn update_record(
+        &self,
+        record: Arc<RwLock<polars::frame::DataFrame>>,
+        time: f32,
+    ) -> PolarsResult<()> {
+        let new_row = &polars::df!["Time" => [time], "Position_X" => [self.translation.x], "Position_Y" => [self.translation.y], "Position_Z" => [self.translation.z]].unwrap();
+
+        match record.write() {
+            Ok(mut df) => {
+                df.vstack_mut(new_row)?;
+                Ok(())
+            }
+            Err(_) => todo!(),
+        }
+    }
 }
 
 #[derive(Resource)]
-pub struct DataframeStore(pub HashMap<String, Arc<polars::frame::DataFrame>>);
+pub struct DataframeStore(pub HashMap<String, Arc<RwLock<polars::frame::DataFrame>>>);
 
 #[derive(Resource)]
-pub struct DataFrameSender(pub flume::Sender<HashMap<String, Arc<polars::frame::DataFrame>>>);
+pub struct DataFrameSender(
+    pub flume::Sender<HashMap<String, Arc<RwLock<polars::frame::DataFrame>>>>,
+);
 
 /// Record components don't implement Reflect, and therefore cannot be serialized
 /// Since cloning the simulation class requires serialization, something else must be done
@@ -37,20 +78,11 @@ pub fn initialize_records(
 ) {
     // iterator over all entities found by the query
     for (e, n, r_i, t) in query_entities.iter() {
-        // Get reference to position from the transform
-        let position = &t.translation;
-        // create new row to add to the dataframe
-        let new_row = polars::df!["Time" => [world_timer.timer.elapsed_secs()], "Position_X" => [position.x], "Position_Y" => [position.y], "Position_Z" => [position.z]].unwrap();
-
         commands
             .entity(e)
             .insert(
                 //create the record to be added
-                Record {
-                    record_name: n.0.clone(),
-                    record_output: true,
-                    dataframe: Arc::new(new_row),
-                },
+                t.initialize_record(e.index(), n.0.clone(), world_timer.timer.elapsed_secs()),
             )
             .remove::<RecordInitializer>();
     }
@@ -58,21 +90,15 @@ pub fn initialize_records(
 
 /// system to query for all entities that have both Record and Transform components
 /// grabs data from the transform and records it to the record component
-pub fn update_records(
-    mut record_components: Query<(&mut Record, &Transform)>,
-    world_timer: Res<WorldTimer>,
-) {
-    // iterate over query results, destructuring the returned tuple
-    for (mut r, t) in record_components.iter_mut() {
-        // check if we should be recording data for this record component
-        if r.record_output {
-            // Get reference to position from the transform
-            let position = &t.translation;
-            // create new row to add to the dataframe
-            let new_row = polars::df!["Time" => [world_timer.timer.elapsed_secs()], "Position_X" => [position.x], "Position_Y" => [position.y], "Position_Z" => [position.z]].unwrap();
-
-            // Call vstack_mut function with the newly created row to append to dataframe
-            r.dataframe = Arc::new(r.dataframe.vstack(&new_row).unwrap());
+pub fn update_records(records: Query<(&Record, &dyn RecordTrait)>, world_timer: Res<WorldTimer>) {
+    for (record, rt) in records.iter() {
+        for recording_component in rt.iter() {
+            match recording_component
+                .update_record(record.dataframe.clone(), world_timer.timer.elapsed_secs())
+            {
+                Ok(_) => {}
+                Err(_) => continue,
+            }
         }
     }
 }
