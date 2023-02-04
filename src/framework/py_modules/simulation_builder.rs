@@ -185,11 +185,19 @@ impl Simulation {
         Ok(())
     }
 
-    pub fn add_entity(&mut self, e: Entity) -> PyResult<()> {
-        let e1: DynamicEntity = DynamicEntity {
-            entity: 1,
+    pub fn add_entity(&mut self, e: Entity, index: u32) -> PyResult<()> {
+        //BEGIN Error handling
+        if self.entity_ids.contains(&index) {
+            return Err(pyo3::exceptions::PyAttributeError::new_err(format!("Index \"{}\" is already in use, overlapping entity indices may cause some entities to get overwritten", index.to_string())));
+        }
+        //END Error handling
+
+        let mut e1: DynamicEntity = DynamicEntity {
+            entity: index,
             components: e.components,
         };
+
+        e1.components.push(Box::new(Name(e.name)));
 
         self.scene.entities.push(e1);
 

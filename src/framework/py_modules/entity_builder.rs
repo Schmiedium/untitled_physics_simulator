@@ -1,7 +1,11 @@
+use std::path::PathBuf;
+
 use bevy::{prelude::Transform, reflect::Reflect, transform::TransformBundle};
-use bevy_rapier3d::prelude::Velocity;
+use bevy_rapier3d::prelude::{RigidBody, Velocity};
 use glam::Vec3;
-use pyo3::{pyclass, pymethods, types::PyTuple, PyObject, PyResult};
+use pyo3::{exceptions::PyValueError, pyclass, pymethods, types::PyTuple, PyObject, PyResult};
+
+use super::simulation_builder::{ColliderInitializer, RecordInitializer, Shape};
 
 #[pyclass]
 pub struct Entity {
@@ -12,18 +16,37 @@ pub struct Entity {
 #[pymethods]
 impl Entity {
     #[new]
-    fn new() -> Self {
-        Entity {
-            name: String::default(),
+    fn new(entity_type: String, name: String) -> PyResult<Self> {
+        //match input to supported RigidBody type, return error if invalid
+        let body = match &*entity_type {
+            //Dyanmic entity will be acted on by gravity/other forces and potentially collide
+            "Dynamic" => RigidBody::Dynamic,
+            //Fixed entity will be locked in one position
+            "Fixed" => RigidBody::Fixed,
+            s => {
+                return Err(PyValueError::new_err(format!(
+                    "entity_type must be either Dynamic or Fixed, {} is invalid",
+                    s
+                )))
+            }
+        };
+
+        let mut e = Entity {
+            name,
             components: Vec::new(),
-        }
+        };
+
+        e.components.push(Box::new(body));
+        e.components.push(Box::new(RecordInitializer));
+
+        Ok(e)
     }
 
     fn add_component(&mut self, component: PyObject) {
         todo!()
     }
 
-    fn add_transform(&mut self, position: &PyTuple) -> PyResult<()> {
+    fn add_transform(&mut self, position: &PyTuple) -> PyResult<Self> {
         //extract position vector components from input tuple
         let pos: (f32, f32, f32) = position.extract()?;
         //build transform component bundle to handle position
@@ -35,10 +58,10 @@ impl Entity {
         self.components.push(Box::new(trans));
         self.components.push(Box::new(gtrans));
 
-        Ok(())
+        Ok(self.to_owned())
     }
 
-    fn add_velocity(&mut self, velocity: &PyTuple) -> PyResult<()> {
+    fn add_velocity(&mut self, velocity: &PyTuple) -> PyResult<Self> {
         //extract velocity vector components from input tuple
         let vel: (f32, f32, f32) = velocity.extract()?;
         //build velocity component
@@ -49,7 +72,18 @@ impl Entity {
 
         self.components.push(Box::new(vel_comp));
 
-        Ok(())
+        Ok(self.to_owned())
+    }
+
+    fn add_geometry(&mut self, geometry: String) -> PyResult<Self> {
+        let ci = ColliderInitializer {
+            path: PathBuf::from(geometry),
+            shape: Shape::Trimesh,
+        };
+
+        self.components.push(Box::new(ci));
+
+        Ok(self.to_owned())
     }
 }
 
