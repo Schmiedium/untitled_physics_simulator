@@ -5,6 +5,8 @@ use bevy_rapier3d::prelude::{RigidBody, Velocity};
 use glam::Vec3;
 use pyo3::{exceptions::PyValueError, pyclass, pymethods, types::PyTuple, PyObject, PyResult};
 
+use crate::models::base_component::BaseComponent;
+
 use super::simulation_builder::{ColliderInitializer, RecordInitializer, Shape};
 
 #[pyclass]
@@ -42,16 +44,15 @@ impl Entity {
         Ok(e)
     }
 
-    fn add_component(&mut self, component: PyObject) {
-        todo!()
+    fn add_component(&mut self, component: BaseComponent) -> PyResult<Self> {
+        self.components.push(component.c);
+
+        Ok(self.to_owned())
     }
 
-    fn add_transform(&mut self, position: &PyTuple) -> PyResult<Self> {
-        //extract position vector components from input tuple
-        let pos: (f32, f32, f32) = position.extract()?;
+    fn add_transform(&mut self, x: f32, y: f32, z: f32) -> PyResult<Self> {
         //build transform component bundle to handle position
-        let trans_bundle =
-            TransformBundle::from_transform(Transform::from_xyz(pos.0, pos.1, pos.2));
+        let trans_bundle = TransformBundle::from_transform(Transform::from_xyz(x, y, z));
         let trans = trans_bundle.local;
         let gtrans = trans_bundle.global;
 
@@ -61,12 +62,10 @@ impl Entity {
         Ok(self.to_owned())
     }
 
-    fn add_velocity(&mut self, velocity: &PyTuple) -> PyResult<Self> {
-        //extract velocity vector components from input tuple
-        let vel: (f32, f32, f32) = velocity.extract()?;
+    fn add_velocity(&mut self, x: f32, y: f32, z: f32) -> PyResult<Self> {
         //build velocity component
         let vel_comp = Velocity {
-            linvel: Vec3::new(vel.0, vel.1, vel.2),
+            linvel: Vec3::new(x, y, z),
             angvel: Vec3::new(0.0, 0.0, 0.0),
         };
 

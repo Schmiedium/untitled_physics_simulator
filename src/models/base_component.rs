@@ -5,8 +5,7 @@ use crate::framework::data_collection::records::RecordTrait;
 
 #[pyclass(subclass)]
 pub struct BaseComponent {
-    name: String,
-    c: Box<dyn Reflect>,
+    pub c: Box<dyn Reflect>,
 }
 
 impl RecordTrait for BaseComponent {
@@ -28,5 +27,13 @@ impl RecordTrait for BaseComponent {
         name: String,
     ) -> polars::prelude::PolarsResult<()> {
         todo!()
+    }
+}
+
+impl Clone for BaseComponent {
+    fn clone(&self) -> Self {
+        Self {
+            c: self.c.clone_value(),
+        }
     }
 }
