@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use framework::data_collection::records::{DataFrameSender, DataframeStore};
 use framework::plugins::base_plugin::WorldTimer;
+use framework::py_modules::entity_builder;
 use framework::{data_collection::dataframe_conversions, py_modules::simulation_builder};
 use polars::prelude::*;
 use pyo3::prelude::*;
@@ -9,6 +10,7 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 mod framework;
+mod models;
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -18,6 +20,8 @@ fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(simulation_run_headless, m)?)?;
     //add the simulation builder class
     m.add_class::<simulation_builder::Simulation>()?;
+    m.add_class::<entity_builder::Entity>()?;
+
     Ok(())
 }
 

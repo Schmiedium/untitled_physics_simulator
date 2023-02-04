@@ -124,3 +124,6 @@ pub fn update_records(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {}

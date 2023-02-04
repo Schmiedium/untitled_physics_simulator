@@ -4,7 +4,7 @@ import polars as pl
 import sys
 
 #create simulation with 0.001 seconds per timestep, and a sim duration of 5.0 seconds. ~5000 steps
-sim = ps.Simulation(0.016666, 5.0)
+sim = ps.Simulation(0.001, 5.0)
 
 #create entities and add to the sim
 #you will have to supply your own objs, be carefuul they don't overlap on spawn

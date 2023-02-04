@@ -1,5 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
+use super::entity_builder::Entity;
 use bevy::{
     prelude::{Component, GlobalTransform, ReflectComponent, Resource, Transform, Vec3},
     reflect::{FromReflect, Reflect, TypeRegistry, TypeRegistryInternal},
@@ -13,6 +14,7 @@ use serde::de::DeserializeSeed;
 #[pyclass]
 #[derive(Resource)]
 pub struct Simulation {
+    pub entity_ids: Vec<u32>,
     pub timestep: Real,
     pub sim_duration: Real,
     pub scene: DynamicScene,
@@ -45,6 +47,7 @@ impl Clone for Simulation {
         let new_scene = scene_deserializer.deserialize(&mut deserializer).unwrap();
 
         Self {
+            entity_ids: Vec::new(),
             timestep: self.timestep,
             sim_duration: self.sim_duration,
             scene: new_scene,
@@ -58,6 +61,7 @@ impl Simulation {
     #[new]
     fn new(timestep: Real, sim_duration: Real) -> Self {
         let mut new_sim = Simulation {
+            entity_ids: Vec::new(),
             timestep,
             sim_duration,
             scene: DynamicScene {
@@ -95,6 +99,7 @@ impl Simulation {
         new_sim
     }
 
+    // Create a basic entity in line and add it to the simulation
     pub fn create_entity(
         &mut self,
         index: u32,
@@ -104,6 +109,14 @@ impl Simulation {
         velocity: &PyTuple,
         geometry: String,
     ) -> PyResult<()> {
+        //BEGIN Error handling
+        if self.entity_ids.contains(&index) {
+            return Err(pyo3::exceptions::PyAttributeError::new_err(format!("Index \"{}\" for entity \"{}\" is already in use, overlapping entity indices may cause some entities to get overwritten", index.to_string(), &name)));
+        }
+        //END Error handling
+
+        self.entity_ids.push(index);
+
         //BEGIN Setup all necessary components
 
         //create name components
@@ -170,6 +183,21 @@ impl Simulation {
         self.scene.entities.push(entity);
 
         Ok(())
+    }
+
+    pub fn add_entity(&mut self, e: Entity) -> PyResult<()> {
+        let e1: DynamicEntity = DynamicEntity {
+            entity: 1,
+            components: e.components,
+        };
+
+        self.scene.entities.push(e1);
+
+        Ok(())
+    }
+
+    pub fn add_entities(&mut self, entities: Vec<Entity>) -> PyResult<()> {
+        todo!()
     }
 }
 
