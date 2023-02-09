@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 
-use bevy::{prelude::Transform, reflect::Reflect, transform::TransformBundle};
+use bevy::{
+    prelude::{Component, Transform},
+    reflect::Reflect,
+    transform::TransformBundle,
+};
 use bevy_rapier3d::prelude::{RigidBody, Velocity};
 use glam::Vec3;
 use pyo3::{exceptions::PyValueError, pyclass, pymethods, types::PyTuple, PyObject, PyResult};
-
-use crate::models::base_component::BaseComponent;
 
 use super::simulation_builder::{ColliderInitializer, RecordInitializer, Shape};
 
@@ -44,9 +46,7 @@ impl Entity {
         Ok(e)
     }
 
-    fn add_component(&mut self, component: BaseComponent) -> PyResult<Self> {
-        self.components.push(component.c);
-
+    fn add_component(&mut self, component: PyObject) -> PyResult<Self> {
         Ok(self.to_owned())
     }
 
