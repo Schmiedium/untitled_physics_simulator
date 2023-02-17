@@ -55,6 +55,10 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
         .insert_resource(simulation)
+        .insert_resource(bevy::winit::WinitSettings {
+            return_from_run: true,
+            ..bevy::prelude::default()
+        })
         //setting up the camera for rendering
         .add_startup_system(setup_camera)
         // see setup_physics function for details
@@ -100,15 +104,21 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
     // This sets up and runs the sim
     App::new()
         .add_plugins(MinimalPlugins)
+        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroupHeadless)
         .insert_resource(config)
         .insert_resource(dataframes)
         .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
         .insert_resource(simulation)
-        .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroupHeadless)
+        .init_resource::<bevy::window::Windows>()
+        .add_asset::<bevy::render::mesh::Mesh>()
+        .insert_resource(bevy::app::ScheduleRunnerSettings {
+            run_mode: bevy::app::RunMode::Loop { wait: None },
+        })
         .run();
 
     let dfs = receiver.recv().unwrap();
+    //
 
     dataframe_conversions::dataframe_hashmap_to_python_dict(dfs)
 }
