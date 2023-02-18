@@ -60,7 +60,8 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
             ..bevy::prelude::default()
         })
         //setting up the camera for rendering
-        .add_startup_system(setup_camera)
+        .add_startup_system(framework::camera::spawn_camera)
+        .add_system(framework::camera::pan_orbit_camera)
         // see setup_physics function for details
         // this should be redone with events or something
         .run();
@@ -70,15 +71,6 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
 
     // call function to convert our hashmap into a python dictionary usable in python, and return it
     dataframe_conversions::dataframe_hashmap_to_python_dict(dfs)
-}
-
-/// Sets up a camera to view whatever is rendering
-fn setup_camera(mut commands: Commands) {
-    // Add a camera so we can see the debug-render.
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(-3.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..Default::default()
-    });
 }
 
 #[pyfunction]
