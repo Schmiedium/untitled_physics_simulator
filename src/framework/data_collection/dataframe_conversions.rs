@@ -13,6 +13,8 @@ use pyo3::{
     PyAny, PyObject, PyResult,
 };
 
+type DataframeStore = HashMap<String, Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>;
+
 #[pyclass]
 pub struct PySeries {
     #[pyo3(get, set)]
@@ -115,9 +117,7 @@ pub fn series_to_arrow(series: &mut Series) -> PyResult<PySeries> {
 
 /// This is not a bevy system, but a function extracted from main for converting the data collected
 /// during the sim into a format that can be pass back to python
-pub fn dataframe_hashmap_to_python_dict(
-    dfs: Vec<Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>,
-) -> PyResult<PyObject> {
+pub fn dataframe_hashmap_to_python_dict(dfs: DataframeStore) -> PyResult<PyObject> {
     if dfs.is_empty() {
         println!("QUACK");
         return Python::with_gil(|py| -> PyResult<PyObject> {
@@ -185,28 +185,40 @@ pub fn dataframe_hashmap_to_python_dict(
     // iterate over the hashmap passed in and return a python dictionary of names and dataframes
     let keys_values = dfs
         .into_iter()
-        .map(|p| -> Vec<(String, PyObject)> {
-            p.write()
-                .unwrap()
-                .to_owned()
-                .into_iter()
-                .map(closure)
-                // map that result to the interior of the result, as a python object
-                .map(|py_res| -> (String, PyObject) {
-                    match py_res {
-                        Ok(x) => x,
-                        Err(e) => {
-                            let object: Py<PyAny> = Python::with_gil(|py| {
-                                e.print(py);
-                                "quack".to_string().to_object(py)
-                            });
-                            ("failure to return dataframe".to_string(), object)
+        .map(|p| -> (String, Vec<(String, PyObject)>) {
+            (
+                p.0,
+                p.1.write()
+                    .unwrap()
+                    .to_owned()
+                    .into_iter()
+                    .map(closure)
+                    // map that result to the interior of the result, as a python object
+                    .map(|py_res| -> (String, PyObject) {
+                        match py_res {
+                            Ok(x) => x,
+                            Err(e) => {
+                                let object: Py<PyAny> = Python::with_gil(|py| {
+                                    e.print(py);
+                                    "quack".to_string().to_object(py)
+                                });
+                                ("failure to return dataframe".to_string(), object)
+                            }
                         }
-                    }
-                })
-                .collect::<Vec<(String, PyObject)>>()
+                    })
+                    .collect::<Vec<(String, PyObject)>>(),
+            )
         })
-        .flatten()
+        .map(|inner_dict| -> (String, PyObject) {
+            // construct inner python dictionary object, and then return it
+            (
+                inner_dict.0,
+                Python::with_gil(|py| -> PyObject {
+                    (inner_dict.1.into_py_dict(py)).to_object(py)
+                }),
+            )
+        })
+        // .flatten()
         .collect::<Vec<(String, PyObject)>>();
 
     // construct python dictionary object, and then return it

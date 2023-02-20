@@ -36,12 +36,12 @@ impl Entity {
         };
 
         let mut e = Entity {
-            name,
+            name: name.clone(),
             components: Vec::new(),
         };
 
         e.components.push(Box::new(body));
-        e.components.push(Box::new(RecordInitializer));
+        e.components.push(Box::new(RecordInitializer(name)));
 
         Ok(e)
     }

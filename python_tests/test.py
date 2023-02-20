@@ -7,7 +7,7 @@ from dask.distributed import Client, progress
 
 def do_simulation_things():
     #create simulation with 0.001 seconds per timestep, and a sim duration of 5.0 seconds. ~5000 steps
-    sim = ps.Simulation(0.001, 5.0)
+    sim = ps.Simulation(0.01, 1.0)
 
     geo = "/home/alex/Documents/3D_Geometry/OBJs/icosahedron.obj"
 
@@ -16,7 +16,7 @@ def do_simulation_things():
     for x in range(0, 20, 3):
         for y in range(2, 20, 3):
             for z in range(0, 20, 3):
-                e = ps.Entity("Dynamic", "test_builder").add_transform(float(x), float(y), float(z)).add_geometry(geo)
+                e = ps.Entity("Dynamic", f"test_{x}_{y}_{z}").add_transform(float(x), float(y), float(z)).add_geometry(geo)
                 entities.append(e)
 
     i = 1
@@ -30,7 +30,7 @@ def do_simulation_things():
     # sim.create_entity(index = 14, name = "test12", entity_type = "Dynamic", position = (0.0, 20.0, -10.0), velocity = (0.0, 0.0, 0.0), geometry = "/home/alex/Documents/3D_Geometry/OBJs/icosahedron.obj")
     # sim.add_entity(e1, 15)
 
-    return ps.simulation_run(sim)
+    return ps.simulation_run_headless(sim)
 
 
 def main():
@@ -40,7 +40,7 @@ def main():
     #run the simulation with a render, render can be turned off by using simulation_run_headless
     #store the output data in a variable
     # future = client.submit(do_simulation_things)
-    do_simulation_things()
+    print(do_simulation_things())
     # result = do_simulation_things()
 
     #print the output

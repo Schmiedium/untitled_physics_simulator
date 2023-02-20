@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
-use framework::data_collection::records::{DataFrameSender, DataframeStore};
+use framework::data_collection::records::{DataFrameSender, DataframeStoreResource};
 use framework::plugins::base_plugin::WorldTimer;
 use framework::py_modules::entity_builder;
 use framework::{data_collection::dataframe_conversions, py_modules::simulation_builder};
@@ -11,6 +11,8 @@ use std::sync::RwLock;
 
 mod framework;
 mod models;
+
+type DataframeStore = HashMap<String, Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>;
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -34,14 +36,13 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
 
     // DataframeStore is a tuple struct with one element, this facilitates getting output data from bevy
     // once the app is done running
-    let dataframes: DataframeStore = DataframeStore(Vec::new());
+    let dataframes: DataframeStoreResource = DataframeStoreResource(HashMap::new());
 
     // Create flume sender and receiver, for sending data between threads
     // Bevy is designed to be super parallel, so something like this is necessary
     // The sender goes inside the app, and will send the Hashmap of dataframes back out on simulation exit
     // The receiver stays here and will receive the sent data
-    let (sender, receiver) =
-        flume::unbounded::<Vec<Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>>();
+    let (sender, receiver) = flume::unbounded::<DataframeStore>();
 
     // Instantiation of the app. This is the bevy app that will run rapier and everything else
     // This sets up and runs the sim
@@ -83,14 +84,13 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
 
     // DataframeStore is a tuple struct with one element, this facilitates getting output data from bevy
     // once the app is done running
-    let dataframes: DataframeStore = DataframeStore(Vec::new());
+    let dataframes: DataframeStoreResource = DataframeStoreResource(HashMap::new());
 
     // Create flume sender and receiver, for sending data between threads
     // Bevy is designed to be super parallel, so something like this is necessary
     // The sender goes inside the app, and will send the Hashmap of dataframes back out on simulation exit
     // The receiver stays here and will receive the sent data
-    let (sender, receiver) =
-        flume::unbounded::<Vec<Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>>();
+    let (sender, receiver) = flume::unbounded::<DataframeStore>();
 
     // Instantiation of the app. This is the bevy app that will run rapier and everything else
     // This sets up and runs the sim

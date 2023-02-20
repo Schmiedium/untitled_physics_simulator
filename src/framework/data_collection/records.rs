@@ -6,29 +6,26 @@ use polars::prelude::{NamedFrom, PolarsResult};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+type DataframeStore = HashMap<String, Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>;
+
 #[derive(Component, Default)]
 pub struct Record {
+    pub name: String,
     pub dataframes: Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>,
 }
 
 #[bevy_trait_query::queryable]
 pub trait RecordTrait {
-    fn initialize_record(&self, record: &Record, index: u32, name: String, time: f32);
+    fn initialize_record(&self, record: &mut Record, index: u32, name: String, time: f32);
 
-    fn update_record(
-        &self,
-        record: &Record,
-        time: f32,
-        index: u32,
-        name: String,
-    ) -> PolarsResult<()>;
+    fn update_record(&self, record: &Record, time: f32) -> PolarsResult<()>;
 }
 
 impl RecordTrait for Transform {
-    fn initialize_record(&self, record: &Record, index: u32, name: String, time: f32) {
+    fn initialize_record(&self, record: &mut Record, index: u32, name: String, time: f32) {
         let first_row = polars::df!["Time" => [time], "Position_X" => [self.translation.x], "Position_Y" => [self.translation.y], "Position_Z" => [self.translation.z]].unwrap();
-        let k = format!("{}_{}_Position", name, index.to_string());
-
+        let k = format!("Position");
+        record.name = format!("{}_{}", name, index.to_string());
         match record.dataframes.write() {
             Ok(mut rw_guard) => {
                 rw_guard.insert(k, first_row);
@@ -37,15 +34,9 @@ impl RecordTrait for Transform {
         }
     }
 
-    fn update_record(
-        &self,
-        record: &Record,
-        time: f32,
-        index: u32,
-        name: String,
-    ) -> PolarsResult<()> {
+    fn update_record(&self, record: &Record, time: f32) -> PolarsResult<()> {
         let new_row = &polars::df!["Time" => [time], "Position_X" => [self.translation.x], "Position_Y" => [self.translation.y], "Position_Z" => [self.translation.z]].unwrap();
-        let k = format!("{}_{}_Position", name, index.to_string());
+        let k = format!("Position");
 
         match record.dataframes.clone().write() {
             Ok(mut df) => {
@@ -58,12 +49,10 @@ impl RecordTrait for Transform {
 }
 
 #[derive(Resource)]
-pub struct DataframeStore(pub Vec<Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>);
+pub struct DataframeStoreResource(pub DataframeStore);
 
 #[derive(Resource)]
-pub struct DataFrameSender(
-    pub flume::Sender<Vec<Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>>,
-);
+pub struct DataFrameSender(pub flume::Sender<DataframeStore>);
 
 /// Record components don't implement Reflect, and therefore cannot be serialized
 /// Since cloning the simulation class requires serialization, something else must be done
@@ -106,18 +95,10 @@ pub fn initialize_records(
 
 /// system to query for all entities that have both Record and Transform components
 /// grabs data from the transform and records it to the record component
-pub fn update_records(
-    records: Query<(Entity, &Name, &Record, &dyn RecordTrait)>,
-    world_timer: Res<WorldTimer>,
-) {
-    for (e, name, record, rt) in records.iter() {
+pub fn update_records(records: Query<(&Record, &dyn RecordTrait)>, world_timer: Res<WorldTimer>) {
+    for (record, rt) in records.iter() {
         for recording_component in rt.iter() {
-            match recording_component.update_record(
-                record,
-                world_timer.timer.elapsed_secs(),
-                e.index(),
-                name.0.clone(),
-            ) {
+            match recording_component.update_record(record, world_timer.timer.elapsed_secs()) {
                 Ok(_) => {}
                 Err(_) => continue,
             }

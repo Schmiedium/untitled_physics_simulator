@@ -1,6 +1,6 @@
 use crate::framework::data_collection::records::RecordTrait;
 use bevy::{prelude::Component, reflect::Reflect};
-use polars::prelude::{NamedFrom, PolarsResult};
+use polars::prelude::NamedFrom;
 use pyo3::{pyclass, pymethods};
 
 #[pyclass]
@@ -18,13 +18,14 @@ impl TestModel {
 impl RecordTrait for TestModel {
     fn initialize_record(
         &self,
-        record: &crate::framework::data_collection::records::Record,
+        record: &mut crate::framework::data_collection::records::Record,
         index: u32,
         name: String,
         time: f32,
     ) {
         let first_row = polars::df!["Time" => [time], "Value" => [1]].unwrap();
-        let k: String = format!("{}_{}_TestModel", index, &name);
+        let k: String = format!("TestModel");
+        record.name = format!("{}_{}", index, &name);
 
         match record.dataframes.write() {
             Ok(mut rw_guard) => {
@@ -38,11 +39,9 @@ impl RecordTrait for TestModel {
         &self,
         record: &crate::framework::data_collection::records::Record,
         time: f32,
-        index: u32,
-        name: String,
     ) -> polars::prelude::PolarsResult<()> {
         let new_row = &polars::df!["Time" => [time], "Value" => [1]].unwrap();
-        let k = format!("{}_{}_Position", name, index.to_string());
+        let k = format!("Position");
 
         match record.dataframes.clone().write() {
             Ok(mut df) => {

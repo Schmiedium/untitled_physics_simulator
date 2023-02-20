@@ -120,7 +120,7 @@ impl Simulation {
         //BEGIN Setup all necessary components
 
         //create name components
-        let n = Name(name);
+        let n = Name(name.clone());
 
         //match input to supported RigidBody type, return error if invalid
         let body = match &*entity_type {
@@ -166,7 +166,7 @@ impl Simulation {
         let vel_comp_b = Box::new(vel_comp);
         let body_b = Box::new(body);
         let n_b = Box::new(n);
-        let ri_b = Box::new(RecordInitializer);
+        let ri_b = Box::new(RecordInitializer(name));
         let ci_b = Box::new(ci);
 
         //End boxing all entities
@@ -215,7 +215,7 @@ pub struct Name(pub String);
 
 #[derive(Component, Reflect, FromReflect, Default)]
 #[reflect(Component)]
-pub struct RecordInitializer;
+pub struct RecordInitializer(pub String);
 
 impl RecordInitializer {}
 
