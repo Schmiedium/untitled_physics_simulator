@@ -205,7 +205,15 @@ impl Simulation {
     }
 
     pub fn add_entities(&mut self, entities: Vec<Entity>) -> PyResult<()> {
-        todo!()
+        for e in entities {
+            self.add_entity(e, self.get_first_unused_index())?
+        }
+        Ok(())
+    }
+
+    fn get_first_unused_index(&self) -> u32 {
+        // self.entity_ids.iter().
+        1
     }
 }
 

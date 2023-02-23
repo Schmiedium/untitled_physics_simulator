@@ -2,12 +2,17 @@ use std::path::PathBuf;
 
 use bevy::{
     prelude::{Component, Transform},
-    reflect::Reflect,
+    reflect::{FromReflect, Reflect},
     transform::TransformBundle,
 };
 use bevy_rapier3d::prelude::{RigidBody, Velocity};
 use glam::Vec3;
-use pyo3::{exceptions::PyValueError, pyclass, pymethods, PyObject, PyResult};
+use pyo3::{
+    exceptions::PyValueError, pyclass, pymethods, FromPyObject, Py, PyAny, PyClass, PyObject,
+    PyResult,
+};
+
+use crate::framework::ps_component::PSComponent;
 
 use super::simulation_builder::{ColliderInitializer, RecordInitializer, Shape};
 
@@ -46,15 +51,15 @@ impl Entity {
         Ok(e)
     }
 
-    fn add_component(&mut self, component: PyObject) -> PyResult<Self> {
-        match pyobj_to_component(component) {
-            Ok(comp) => self.components.push(Box::new(comp)),
-            Err(_) => return Err(pyo3::exceptions::PyTypeError::new_err("Python Object passed could not be extracted into a valid trait object.
-            \nArgument must be able to be extracted into a rust type implementing the bevy Component and bevy Reflect traits")),
-        };
+    // fn add_component(&mut self, component: PyObject) -> PyResult<Self> {
+    //     match pyobj_to_component::<PyObject>(component) {
+    //         Ok(comp) => self.components.push(Box::new(comp)),
+    //         Err(_) => return Err(pyo3::exceptions::PyTypeError::new_err("Python Object passed could not be extracted into a valid trait object.
+    //         \nArgument must be able to be extracted into a rust type implementing the bevy Component and bevy Reflect traits")),
+    //     };
 
-        Ok(self.to_owned())
-    }
+    //     Ok(self.to_owned())
+    // }
 
     fn add_transform(&mut self, x: f32, y: f32, z: f32) -> PyResult<Self> {
         //build transform component bundle to handle position
@@ -107,14 +112,13 @@ impl Clone for Entity {
     }
 }
 
-fn blah<T: Component + Reflect>(e: &mut Entity, c: T) {
-    e.components.push(Box::new(c));
-}
-
-fn pyobj_to_component(pyobj: PyObject) -> anyhow::Result<impl Component + Reflect> {
-    pyo3::Python::with_gil(|py| {
-        // pyobj.extract::<impl Component + Reflect>(py);
+fn pyobj_to_component<T>(pyobj: PyObject) -> Result<T, pyo3::PyErr>
+where
+    T: Component + Reflect + FromReflect + Clone + PyClass,
+{
+    let try_into_comp = pyo3::Python::with_gil(|py| -> Result<_, pyo3::PyErr> {
+        let c = pyobj.extract::<T>(py);
+        c
     });
-
-    return Ok(super::simulation_builder::Name("blah".to_string()));
+    try_into_comp
 }
