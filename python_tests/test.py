@@ -2,12 +2,12 @@ import untitled_physics_simulator as ps
 import pyarrow
 import polars as pl
 import sys
-from dask.distributed import Client, progress
+from dask.distributed import Client
 
 
 def do_simulation_things():
     #create simulation with 0.001 seconds per timestep, and a sim duration of 5.0 seconds. ~5000 steps
-    sim = ps.Simulation(0.01, 1.0)
+    sim = ps.Simulation(0.001, 1.0)
 
     geo = "/home/alex/Documents/3D_Geometry/OBJs/icosahedron.obj"
 
@@ -40,7 +40,7 @@ def main():
     #run the simulation with a render, render can be turned off by using simulation_run_headless
     #store the output data in a variable
     # future = client.submit(do_simulation_things)
-    print(do_simulation_things())
+    print(sys.getsizeof(do_simulation_things()))
     # result = do_simulation_things()
 
     #print the output

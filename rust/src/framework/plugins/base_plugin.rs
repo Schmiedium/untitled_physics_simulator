@@ -66,7 +66,6 @@ fn exit_system(
         // Iterate over all the record components found by the query
         for r in record_components.iter_mut() {
             // insert name and dataframe into the hashmap holding onto the data
-            println!("{}", r.name);
             records.0.insert(r.name.to_owned(), r.dataframes.clone());
         }
         // Clone the resource hashmap into something returnable

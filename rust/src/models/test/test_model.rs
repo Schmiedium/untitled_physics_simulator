@@ -1,17 +1,24 @@
 use crate::framework::data_collection::records::RecordTrait;
-use bevy::{prelude::Component, reflect::Reflect};
+use bevy::{
+    prelude::Component,
+    reflect::{FromReflect, Reflect},
+};
 use polars::prelude::NamedFrom;
-use pyo3::{pyclass, pymethods};
+use pyo3::{pyclass, pymethods, FromPyObject};
 
 #[pyclass]
-#[derive(Component, Reflect)]
-struct TestModel {}
+#[derive(Component, Reflect, FromReflect, FromPyObject)]
+struct TestModel {
+    test: String,
+}
 
 #[pymethods]
 impl TestModel {
     #[new]
     fn new() -> Self {
-        TestModel {}
+        TestModel {
+            test: "Bkah".to_string(),
+        }
     }
 }
 

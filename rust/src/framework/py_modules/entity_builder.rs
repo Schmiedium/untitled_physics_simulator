@@ -7,7 +7,7 @@ use bevy::{
 };
 use bevy_rapier3d::prelude::{RigidBody, Velocity};
 use glam::Vec3;
-use pyo3::{exceptions::PyValueError, pyclass, pymethods, types::PyTuple, PyObject, PyResult};
+use pyo3::{exceptions::PyValueError, pyclass, pymethods, PyObject, PyResult};
 
 use super::simulation_builder::{ColliderInitializer, RecordInitializer, Shape};
 
@@ -47,6 +47,12 @@ impl Entity {
     }
 
     fn add_component(&mut self, component: PyObject) -> PyResult<Self> {
+        match pyobj_to_component(component) {
+            Ok(comp) => self.components.push(Box::new(comp)),
+            Err(_) => return Err(pyo3::exceptions::PyTypeError::new_err("Python Object passed could not be extracted into a valid trait object.
+            \nArgument must be able to be extracted into a rust type implementing the bevy Component and bevy Reflect traits")),
+        };
+
         Ok(self.to_owned())
     }
 
@@ -99,4 +105,16 @@ impl Clone for Entity {
             components: new_comp_vec,
         }
     }
+}
+
+fn blah<T: Component + Reflect>(e: &mut Entity, c: T) {
+    e.components.push(Box::new(c));
+}
+
+fn pyobj_to_component(pyobj: PyObject) -> anyhow::Result<impl Component + Reflect> {
+    pyo3::Python::with_gil(|py| {
+        // pyobj.extract::<impl Component + Reflect>(py);
+    });
+
+    return Ok(super::simulation_builder::Name("blah".to_string()));
 }
