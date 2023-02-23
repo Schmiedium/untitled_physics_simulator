@@ -40,7 +40,7 @@ def main():
     #run the simulation with a render, render can be turned off by using simulation_run_headless
     #store the output data in a variable
     # future = client.submit(do_simulation_things)
-    print(sys.getsizeof(do_simulation_things()))
+    print(do_simulation_things())
     # result = do_simulation_things()
 
     #print the output

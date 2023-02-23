@@ -97,7 +97,7 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
     App::new()
         .add_plugins(MinimalPlugins)
         .add_plugins(framework::plugins::plugin_group::UntitledPluginsGroupHeadless)
-        .insert_resouce(bevy::tasks::TaskPoolBuilder)
+        // .insert_resouce(bevy::tasks::TaskPoolBuilder)
         .insert_resource(config)
         .insert_resource(dataframes)
         .insert_resource(DataFrameSender(sender))
