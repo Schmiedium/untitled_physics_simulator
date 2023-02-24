@@ -1,5 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
+use crate::models::test::test_model::TestModel;
+
+use super::entity_builder::Entity;
 use bevy::{
     prelude::{Component, GlobalTransform, ReflectComponent, Resource, Transform, Vec3},
     reflect::{FromReflect, Reflect, TypeRegistry, TypeRegistryInternal},
@@ -13,6 +16,7 @@ use serde::de::DeserializeSeed;
 #[pyclass]
 #[derive(Resource)]
 pub struct Simulation {
+    pub entity_ids: Vec<u32>,
     pub timestep: Real,
     pub sim_duration: Real,
     pub scene: DynamicScene,
@@ -45,6 +49,7 @@ impl Clone for Simulation {
         let new_scene = scene_deserializer.deserialize(&mut deserializer).unwrap();
 
         Self {
+            entity_ids: Vec::new(),
             timestep: self.timestep,
             sim_duration: self.sim_duration,
             scene: new_scene,
@@ -58,8 +63,9 @@ impl Simulation {
     #[new]
     fn new(timestep: Real, sim_duration: Real) -> Self {
         let mut new_sim = Simulation {
-            timestep: timestep,
-            sim_duration: sim_duration,
+            entity_ids: Vec::new(),
+            timestep,
+            sim_duration,
             scene: DynamicScene {
                 entities: Vec::new(),
             },
@@ -89,12 +95,14 @@ impl Simulation {
         new_sim.types.register::<Shape>();
         new_sim.types.register::<RecordInitializer>();
         new_sim.types.register::<ColliderInitializer>();
+        new_sim.types.register::<TestModel>();
 
         //End registering types
 
         new_sim
     }
 
+    // Create a basic entity in line and add it to the simulation
     pub fn create_entity(
         &mut self,
         index: u32,
@@ -104,10 +112,18 @@ impl Simulation {
         velocity: &PyTuple,
         geometry: String,
     ) -> PyResult<()> {
+        //BEGIN Error handling
+        if self.entity_ids.contains(&index) {
+            return Err(pyo3::exceptions::PyAttributeError::new_err(format!("Index \"{}\" for entity \"{}\" is already in use, overlapping entity indices may cause some entities to get overwritten", index.to_string(), &name)));
+        }
+        //END Error handling
+
+        self.entity_ids.push(index);
+
         //BEGIN Setup all necessary components
 
         //create name components
-        let n = Name(name);
+        let n = Name(name.clone());
 
         //match input to supported RigidBody type, return error if invalid
         let body = match &*entity_type {
@@ -153,30 +169,54 @@ impl Simulation {
         let vel_comp_b = Box::new(vel_comp);
         let body_b = Box::new(body);
         let n_b = Box::new(n);
-        let ri_b = Box::new(RecordInitializer);
+        let ri_b = Box::new(RecordInitializer(name));
         let ci_b = Box::new(ci);
 
         //End boxing all entities
 
         //initialize data store for constucting simulation object
-        let mut components: Vec<Box<dyn Reflect>> = Vec::new();
-
-        components.push(trans_b);
-        components.push(gtrans_b);
-        components.push(vel_comp_b);
-        components.push(body_b);
-        components.push(n_b);
-        components.push(ri_b);
-        components.push(ci_b);
+        let components: Vec<Box<dyn Reflect>> =
+            vec![trans_b, gtrans_b, vel_comp_b, body_b, n_b, ri_b, ci_b];
 
         let entity = DynamicEntity {
             entity: index,
-            components: components,
+            components,
         };
 
         self.scene.entities.push(entity);
 
         Ok(())
+    }
+
+    pub fn add_entity(&mut self, e: Entity, index: u32) -> PyResult<()> {
+        //BEGIN Error handling
+        if self.entity_ids.contains(&index) {
+            return Err(pyo3::exceptions::PyAttributeError::new_err(format!("Index \"{}\" is already in use, overlapping entity indices may cause some entities to get overwritten", index.to_string())));
+        }
+        //END Error handling
+
+        let mut e1: DynamicEntity = DynamicEntity {
+            entity: index,
+            components: e.components,
+        };
+
+        e1.components.push(Box::new(Name(e.name)));
+
+        self.scene.entities.push(e1);
+
+        Ok(())
+    }
+
+    pub fn add_entities(&mut self, entities: Vec<Entity>) -> PyResult<()> {
+        for e in entities {
+            self.add_entity(e, self.get_first_unused_index())?
+        }
+        Ok(())
+    }
+
+    fn get_first_unused_index(&self) -> u32 {
+        // self.entity_ids.iter().
+        1
     }
 }
 
@@ -186,7 +226,7 @@ pub struct Name(pub String);
 
 #[derive(Component, Reflect, FromReflect, Default)]
 #[reflect(Component)]
-pub struct RecordInitializer;
+pub struct RecordInitializer(pub String);
 
 impl RecordInitializer {}
 
