@@ -44,14 +44,22 @@ impl Entity {
 
     fn add_component(&mut self, component: PyObject) -> PyResult<Self> {
         let res = pyo3::Python::with_gil(|py| -> PyResult<Self> {
-            match component.call_method1(py, "attach_to_entity", (self.clone(),)) {
-            Ok(e) => Ok(e.extract::<Self>(py)?),
-            Err(_) => return Err(pyo3::exceptions::PyTypeError::new_err("Python Object passed could not be extracted into a valid trait object.
-            \nArgument must be able to be extracted into a rust type implementing the bevy Component and bevy Reflect traits")),
-        }
+            component
+                .call_method1(py, "attach_to_entity", (self.clone(),))?
+                .extract::<Self>(py)
         });
 
         res
+    }
+
+    fn add_components(&mut self, components: Vec<PyObject>) -> PyResult<Self> {
+        let mut res: Entity = self.to_owned();
+
+        for c in components {
+            res = self.add_component(c)?;
+        }
+
+        Ok(res)
     }
 
     fn add_transform(&mut self, x: f32, y: f32, z: f32) -> PyResult<Self> {
