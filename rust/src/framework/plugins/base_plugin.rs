@@ -1,9 +1,12 @@
-use crate::framework::{
-    data_collection::records::{
-        initialize_records, update_records, DataFrameSender, DataframeStoreResource, Record,
-        RecordTrait,
+use crate::{
+    framework::{
+        data_collection::records::{
+            initialize_records, update_records, DataFrameSender, DataframeStoreResource, Record,
+            RecordTrait,
+        },
+        geometry::geometry_parsing,
     },
-    geometry::geometry_parsing,
+    models::test::test_model::TestModel,
 };
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::Collider;
@@ -19,7 +22,9 @@ impl Plugin for BasePlugin {
         app.register_type::<simulation_builder::Shape>();
         app.register_type::<simulation_builder::ColliderInitializer>();
         app.register_type::<simulation_builder::RecordInitializer>();
+        app.register_type::<TestModel>();
         app.register_component_as::<dyn RecordTrait, Transform>();
+        app.register_component_as::<dyn RecordTrait, TestModel>();
         app.add_startup_system(setup_physics);
         app.add_system(initialize_colliders);
         app.add_system(initialize_records);

@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use framework::data_collection::records::{DataFrameSender, DataframeStoreResource};
 use framework::plugins::base_plugin::WorldTimer;
+use framework::plugins::custom_plugins::warhead::py_warhead;
 use framework::py_modules::entity_builder;
 use framework::{data_collection::dataframe_conversions, py_modules::simulation_builder};
 use polars::prelude::*;
@@ -16,13 +17,15 @@ type DataframeStore = HashMap<String, Arc<RwLock<HashMap<String, polars::frame::
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
     //add functions to this module
     m.add_function(wrap_pyfunction!(simulation_run, m)?)?;
     m.add_function(wrap_pyfunction!(simulation_run_headless, m)?)?;
     //add the simulation builder class
     m.add_class::<simulation_builder::Simulation>()?;
     m.add_class::<entity_builder::Entity>()?;
+    m.add_class::<py_warhead::Warhead>()?;
+    m.add_class::<crate::models::test::test_model::TestModel>()?;
 
     Ok(())
 }

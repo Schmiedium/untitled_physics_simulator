@@ -1,14 +1,18 @@
-use crate::framework::data_collection::records::RecordTrait;
+use crate::framework::{
+    data_collection::records::RecordTrait, ps_component::PSComponent,
+    py_modules::entity_builder::Entity,
+};
 use bevy::{
-    prelude::Component,
+    prelude::{Component, ReflectComponent},
     reflect::{FromReflect, Reflect},
 };
 use polars::prelude::NamedFrom;
-use pyo3::{pyclass, pymethods, FromPyObject};
+use pyo3::{pyclass, pymethods};
 
 #[pyclass]
-#[derive(Component, Reflect, FromReflect, FromPyObject)]
-struct TestModel {
+#[derive(Component, Clone, Reflect, FromReflect, Default)]
+#[reflect(Component)]
+pub struct TestModel {
     test: String,
 }
 
@@ -20,19 +24,22 @@ impl TestModel {
             test: "Bkah".to_string(),
         }
     }
+
+    pub fn attach_to_entity(&self, e: &mut Entity) -> pyo3::PyResult<Entity> {
+        let res = self.clone()._attach_to_entity(e.to_owned());
+        println!("attached Test Model to entity");
+        Ok(res)
+    }
 }
 
 impl RecordTrait for TestModel {
     fn initialize_record(
         &self,
         record: &mut crate::framework::data_collection::records::Record,
-        index: u32,
-        name: String,
         time: f32,
     ) {
         let first_row = polars::df!["Time" => [time], "Value" => [1]].unwrap();
         let k: String = format!("TestModel");
-        record.name = format!("{}_{}", index, &name);
 
         match record.dataframes.write() {
             Ok(mut rw_guard) => {
@@ -48,7 +55,7 @@ impl RecordTrait for TestModel {
         time: f32,
     ) -> polars::prelude::PolarsResult<()> {
         let new_row = &polars::df!["Time" => [time], "Value" => [1]].unwrap();
-        let k = format!("Position");
+        let k = format!("TestModel");
 
         match record.dataframes.clone().write() {
             Ok(mut df) => {
@@ -57,5 +64,12 @@ impl RecordTrait for TestModel {
             }
             Err(_) => todo!(),
         }
+    }
+}
+
+impl PSComponent for TestModel {
+    fn _attach_to_entity(self, mut e: Entity) -> Entity {
+        e.components.push(Box::new(self));
+        e
     }
 }

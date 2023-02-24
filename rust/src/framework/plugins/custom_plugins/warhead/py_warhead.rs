@@ -5,9 +5,9 @@ use bevy::{
 use pyo3::{pyclass, pymethods};
 
 use crate::framework::ps_component::PSComponent;
-
-#[pyclass]
+use crate::framework::py_modules::entity_builder::Entity;
 #[derive(Component, Clone, Reflect, FromReflect, Default)]
+#[pyclass(name = "Warhead")]
 pub struct Warhead {
     wh_type: WarheadType,
 }
@@ -27,10 +27,16 @@ impl Warhead {
             wh_type: WarheadType::Frag,
         }
     }
+
+    pub fn attach_to_entity(&self, e: &mut Entity) -> pyo3::PyResult<Entity> {
+        let res = self.clone()._attach_to_entity(e.to_owned());
+        Ok(res)
+    }
 }
 
 impl PSComponent for Warhead {
-    fn attach_to_entity(self, e: &mut crate::framework::py_modules::entity_builder::Entity) {
-        e.components.push(Box::new(self))
+    fn _attach_to_entity(self, mut e: Entity) -> Entity {
+        e.components.push(Box::new(self));
+        e
     }
 }

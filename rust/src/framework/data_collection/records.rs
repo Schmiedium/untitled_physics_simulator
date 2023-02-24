@@ -16,16 +16,15 @@ pub struct Record {
 
 #[bevy_trait_query::queryable]
 pub trait RecordTrait {
-    fn initialize_record(&self, record: &mut Record, index: u32, name: String, time: f32);
+    fn initialize_record(&self, record: &mut Record, time: f32);
 
     fn update_record(&self, record: &Record, time: f32) -> PolarsResult<()>;
 }
 
 impl RecordTrait for Transform {
-    fn initialize_record(&self, record: &mut Record, index: u32, name: String, time: f32) {
+    fn initialize_record(&self, record: &mut Record, time: f32) {
         let first_row = polars::df!["Time" => [time], "Position_X" => [self.translation.x], "Position_Y" => [self.translation.y], "Position_Z" => [self.translation.z]].unwrap();
         let k = format!("Position");
-        record.name = format!("{}_{}", name, index.to_string());
         match record.dataframes.write() {
             Ok(mut rw_guard) => {
                 rw_guard.insert(k, first_row);
@@ -73,14 +72,11 @@ pub fn initialize_records(
     // iterator over all entities found by the query
     for (e, n, r_i, t) in query_entities.iter() {
         let mut r = Record::default();
+        r.name = format!("{}_{}", n.0.clone(), e.index().to_string());
 
         t.iter().for_each(|c| {
-            c.initialize_record(
-                &mut r,
-                e.index(),
-                n.0.clone(),
-                world_timer.timer.elapsed_secs(),
-            )
+            // println!("initializing record");
+            c.initialize_record(&mut r, world_timer.timer.elapsed_secs())
         });
 
         commands
