@@ -27,7 +27,7 @@ impl TestModel {
 
     pub fn attach_to_entity(&self, e: &mut Entity) -> pyo3::PyResult<Entity> {
         let res = self.clone()._attach_to_entity(e.to_owned());
-        println!("attached Test Model to entity");
+        // println!("attached Test Model to entity");
         Ok(res)
     }
 }
