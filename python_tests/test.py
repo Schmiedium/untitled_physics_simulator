@@ -1,30 +1,24 @@
 from untitled_physics_simulator import Simulation, Entity, TestModel, Warhead, simulation_run_headless, simulation_run
-import pyarrow
-import polars as pl
+
 
 
 def do_simulation_things():
     #create simulation with 0.001 seconds per timestep, and a sim duration of 5.0 seconds. ~5000 steps
-    sim = Simulation(0.000001, 1.0, 36.0)
+    sim = Simulation(0.001, 5.0, 36.0)
 
     geo = "/home/alex/Documents/3D_Geometry/OBJs/icosahedron.obj"
 
     entities = []
 
-    x= 3; y = 3; z = 3
+    for x in range(0, 33, 3):
+        for y in range(9, 33, 3):
+            for z in range(0, 33, 3):
+                e = Entity("Dynamic", f"test_{x}_{y}_{z}").add_transform(float(x), float(y), float(z)).add_geometry(geo)
+                entities.append(e)
 
-    e = Entity("Dynamic", f"test_{x}_{y}_{z}").add_transform(float(x), float(y), float(z)).add_geometry(geo)
-    
-    wh = TestModel("test_string")
-    e = e.add_component(wh)
-    entities.append(e)
+    sim.add_entities(entities)
 
-    i = 1
-    for entity in entities:
-        sim.add_entity(entity, i)
-        i = i+1
-
-
+    print(f"simulation constructed with {len(entities)} entities")
     return simulation_run_headless(sim)
 
 

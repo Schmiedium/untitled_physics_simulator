@@ -59,6 +59,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .insert_resource(dataframes)
         .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
+        .insert_resource(WallTime(simulation.wall_time))
         .insert_resource(simulation)
         .insert_resource(bevy::winit::WinitSettings {
             return_from_run: true,

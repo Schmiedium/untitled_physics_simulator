@@ -191,12 +191,8 @@ impl Simulation {
         Ok(())
     }
 
-    pub fn add_entity(&mut self, e: Entity, index: u32) -> PyResult<()> {
-        //BEGIN Error handling
-        if self.entity_ids.contains(&index) {
-            return Err(pyo3::exceptions::PyAttributeError::new_err(format!("Index \"{}\" is already in use, overlapping entity indices may cause some entities to get overwritten", index.to_string())));
-        }
-        //END Error handling
+    pub fn add_entity(&mut self, e: Entity) -> PyResult<()> {
+        let index = self.get_first_unused_index();
 
         let mut e1: DynamicEntity = DynamicEntity {
             entity: index,
@@ -207,19 +203,25 @@ impl Simulation {
 
         self.scene.entities.push(e1);
 
+        self.entity_ids.push(index);
+
         Ok(())
     }
 
     pub fn add_entities(&mut self, entities: Vec<Entity>) -> PyResult<()> {
         for e in entities {
-            self.add_entity(e, self.get_first_unused_index())?
+            self.add_entity(e)?
         }
         Ok(())
     }
 
     fn get_first_unused_index(&self) -> u32 {
-        // self.entity_ids.iter().
-        1
+        let len = self.entity_ids.len() as u32;
+        if !self.entity_ids.contains(&len) {
+            return len;
+        } else {
+            0
+        }
     }
 }
 
