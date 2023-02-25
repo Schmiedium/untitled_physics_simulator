@@ -12,7 +12,6 @@ you'll need to supply your own .obj files for now
 
 TODO list:
 
-attempt to rework the data collection and get rid of the trait query, it's kind of clunky
 add derive macro for PSComponent
 figure out cpu_thread limiter
 implement wall time for simulation

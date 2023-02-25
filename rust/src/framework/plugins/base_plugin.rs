@@ -5,6 +5,7 @@ use crate::{
             DataFrameSender, DataframeStoreResource, Record, UpdateRecordEvent,
         },
         geometry::geometry_parsing,
+        py_modules::simulation_builder::WallTime,
     },
     models::test::test_model::{test_model_update_record_event, TestModel},
 };
@@ -62,13 +63,17 @@ fn advance_world_time(mut world_timer: ResMut<WorldTimer>) {
 ///
 fn exit_system(
     world_timer: Res<WorldTimer>,
+    wall_time: Res<WallTime>,
+    time: Res<Time>,
     mut record_components: Query<&Record>,
     mut exit: EventWriter<bevy::app::AppExit>,
     mut records: ResMut<DataframeStoreResource>,
     sender: Res<DataFrameSender>,
 ) {
     //Determine if exit criterion is met
-    if world_timer.timer.elapsed_secs() > world_timer.simulation_end_time {
+    if time.elapsed_seconds_wrapped() > wall_time.0
+        || world_timer.timer.elapsed_secs() > world_timer.simulation_end_time
+    {
         // Iterate over all the record components found by the query
         for r in record_components.iter_mut() {
             // insert name and dataframe into the hashmap holding onto the data

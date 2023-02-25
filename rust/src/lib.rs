@@ -3,6 +3,7 @@ use bevy_rapier3d::prelude::*;
 use framework::data_collection::records::{DataFrameSender, DataframeStoreResource};
 use framework::plugins::base_plugin::WorldTimer;
 use framework::py_modules::entity_builder;
+use framework::py_modules::simulation_builder::WallTime;
 use framework::{data_collection::dataframe_conversions, py_modules::simulation_builder};
 use models::warhead::py_warhead;
 use polars::prelude::*;
@@ -105,6 +106,7 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
         .insert_resource(dataframes)
         .insert_resource(DataFrameSender(sender))
         .insert_resource(world_timer)
+        .insert_resource(WallTime(simulation.wall_time))
         .insert_resource(simulation)
         .init_resource::<bevy::window::Windows>()
         .add_asset::<bevy::render::mesh::Mesh>()

@@ -18,6 +18,7 @@ use serde::de::DeserializeSeed;
 pub struct Simulation {
     pub entity_ids: Vec<u32>,
     pub timestep: Real,
+    pub wall_time: Real,
     pub sim_duration: Real,
     pub scene: DynamicScene,
     pub types: TypeRegistryInternal,
@@ -51,6 +52,7 @@ impl Clone for Simulation {
         Self {
             entity_ids: Vec::new(),
             timestep: self.timestep,
+            wall_time: self.wall_time,
             sim_duration: self.sim_duration,
             scene: new_scene,
             types: new_types1,
@@ -61,10 +63,11 @@ impl Clone for Simulation {
 #[pymethods]
 impl Simulation {
     #[new]
-    fn new(timestep: Real, sim_duration: Real) -> Self {
+    fn new(timestep: Real, sim_duration: Real, wall_time: Real) -> Self {
         let mut new_sim = Simulation {
             entity_ids: Vec::new(),
             timestep,
+            wall_time,
             sim_duration,
             scene: DynamicScene {
                 entities: Vec::new(),
@@ -245,4 +248,5 @@ pub enum Shape {
     Computed,
 }
 
-impl ColliderInitializer {}
+#[derive(Resource)]
+pub struct WallTime(pub Real);
