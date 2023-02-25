@@ -12,7 +12,7 @@ you'll need to supply your own .obj files for now
 
 TODO list:
 
-add derive macro for PSComponent
+let PSComponent derive macro derive the necessary trait bounds as well, so we only need to derive the one trait
 figure out cpu_thread limiter
 document all the code
 implement caching for convex decomposition of geometry and expose the option

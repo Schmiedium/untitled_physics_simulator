@@ -25,3 +25,4 @@ ron = "0.8.0"
 serde = "1.0.152"
 glam = "0.22.0"
 bevy-trait-query = "0.1.1"
+pscomp_derive = { version = "0.1.0", path = "pscomp_derive" }

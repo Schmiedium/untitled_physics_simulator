@@ -9,10 +9,11 @@ use bevy::{
     reflect::{FromReflect, Reflect},
 };
 use polars::prelude::NamedFrom;
+use pscomp_derive::PSComponent;
 use pyo3::{pyclass, pymethods};
 
 #[pyclass]
-#[derive(Component, Clone, Reflect, FromReflect, Default)]
+#[derive(Component, Clone, Reflect, FromReflect, Default, PSComponent)]
 #[reflect(Component)]
 pub struct TestModel {
     test: String,
@@ -27,15 +28,7 @@ impl TestModel {
 
     pub fn attach_to_entity(&self, e: &mut Entity) -> pyo3::PyResult<Entity> {
         let res = self.clone()._attach_to_entity(e.to_owned());
-        // println!("attached Test Model to entity");
         Ok(res)
-    }
-}
-
-impl PSComponent for TestModel {
-    fn _attach_to_entity(self, mut e: Entity) -> Entity {
-        e.components.push(Box::new(self));
-        e
     }
 }
 

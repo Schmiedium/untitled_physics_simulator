@@ -3165,6 +3165,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74605f360ce573babfe43964cbe520294dcb081afbf8c108fc6e23036b4da2df"
 
 [[package]]
+name = "pscomp_derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "pyo3"
 version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4041,6 +4050,7 @@ dependencies = [
  "polars",
  "polars-arrow",
  "polars-core",
+ "pscomp_derive",
  "pyo3",
  "ron",
  "serde",
