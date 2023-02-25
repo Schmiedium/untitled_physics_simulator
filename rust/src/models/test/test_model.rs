@@ -1,9 +1,11 @@
 use crate::framework::{
-    data_collection::records::RecordTrait, ps_component::PSComponent,
+    data_collection::records::{Record, UpdateRecordEvent},
+    plugins::base_plugin::WorldTimer,
+    ps_component::PSComponent,
     py_modules::entity_builder::Entity,
 };
 use bevy::{
-    prelude::{Component, ReflectComponent},
+    prelude::{Component, EventWriter, Query, ReflectComponent, Res},
     reflect::{FromReflect, Reflect},
 };
 use polars::prelude::NamedFrom;
@@ -19,10 +21,8 @@ pub struct TestModel {
 #[pymethods]
 impl TestModel {
     #[new]
-    fn new() -> Self {
-        TestModel {
-            test: "Bkah".to_string(),
-        }
+    fn new(name: String) -> Self {
+        TestModel { test: name }
     }
 
     pub fn attach_to_entity(&self, e: &mut Entity) -> pyo3::PyResult<Entity> {
@@ -32,44 +32,28 @@ impl TestModel {
     }
 }
 
-impl RecordTrait for TestModel {
-    fn initialize_record(
-        &self,
-        record: &mut crate::framework::data_collection::records::Record,
-        time: f32,
-    ) {
-        let first_row = polars::df!["Time" => [time], "Value" => [1]].unwrap();
-        let k: String = format!("TestModel");
-
-        match record.dataframes.write() {
-            Ok(mut rw_guard) => {
-                rw_guard.insert(k, first_row);
-            }
-            Err(_) => todo!(),
-        }
-    }
-
-    fn update_record(
-        &self,
-        record: &crate::framework::data_collection::records::Record,
-        time: f32,
-    ) -> polars::prelude::PolarsResult<()> {
-        let new_row = &polars::df!["Time" => [time], "Value" => [1]].unwrap();
-        let k = format!("TestModel");
-
-        match record.dataframes.clone().write() {
-            Ok(mut df) => {
-                df.get_mut(&k).unwrap().vstack_mut(new_row)?;
-                Ok(())
-            }
-            Err(_) => todo!(),
-        }
-    }
-}
-
 impl PSComponent for TestModel {
     fn _attach_to_entity(self, mut e: Entity) -> Entity {
         e.components.push(Box::new(self));
         e
+    }
+}
+
+pub fn test_model_update_record_event(
+    transforms: Query<(&TestModel, &Record)>,
+    mut record_updates: EventWriter<UpdateRecordEvent>,
+    world_timer: Res<WorldTimer>,
+) {
+    for (t, record) in transforms.iter() {
+        let new_row =
+            polars::df!["Time" => [world_timer.timer.elapsed_secs()], "Value" => [t.test.clone()]]
+                .unwrap();
+        let table_name = format!("TestModel");
+
+        record_updates.send(UpdateRecordEvent {
+            record: record.dataframes.clone(),
+            table_name,
+            new_row,
+        });
     }
 }

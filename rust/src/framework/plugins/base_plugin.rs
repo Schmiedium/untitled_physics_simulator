@@ -1,16 +1,15 @@
 use crate::{
     framework::{
         data_collection::records::{
-            initialize_records, update_records, DataFrameSender, DataframeStoreResource, Record,
-            RecordTrait,
+            initialize_records, position_update_record_event, update_record_event_reader,
+            DataFrameSender, DataframeStoreResource, Record, UpdateRecordEvent,
         },
         geometry::geometry_parsing,
     },
-    models::test::test_model::TestModel,
+    models::test::test_model::{test_model_update_record_event, TestModel},
 };
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::Collider;
-use bevy_trait_query::RegisterExt;
 
 use crate::framework::py_modules::simulation_builder;
 
@@ -18,22 +17,24 @@ pub(super) struct BasePlugin;
 
 impl Plugin for BasePlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
+        app.add_event::<UpdateRecordEvent>();
         app.register_type::<simulation_builder::Name>();
         app.register_type::<simulation_builder::Shape>();
         app.register_type::<simulation_builder::ColliderInitializer>();
         app.register_type::<simulation_builder::RecordInitializer>();
         app.register_type::<TestModel>();
-        app.register_component_as::<dyn RecordTrait, Transform>();
-        app.register_component_as::<dyn RecordTrait, TestModel>();
         app.add_startup_system(setup_physics);
         app.add_system(initialize_colliders);
         app.add_system(initialize_records);
-        app.add_system(
-            update_records
-                .after(initialize_records)
-                .after(advance_world_time),
-        );
         app.add_system(advance_world_time);
+        app.add_system(update_record_event_reader);
+        app.add_system(position_update_record_event);
+        app.add_system(test_model_update_record_event);
+        // app.add_system(
+        //     update_records
+        //         .after(initialize_records)
+        //         .after(advance_world_time),
+        // );
         app.add_system(exit_system);
     }
 }

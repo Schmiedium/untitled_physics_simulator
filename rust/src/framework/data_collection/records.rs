@@ -1,7 +1,9 @@
 use crate::framework::plugins::base_plugin::WorldTimer;
 
 use crate::framework::py_modules::simulation_builder::{Name, RecordInitializer};
-use bevy::prelude::{Commands, Component, Entity, Query, Res, Resource, Transform};
+use bevy::prelude::{
+    Commands, Component, Entity, EventReader, EventWriter, Query, Res, Resource, Transform,
+};
 use polars::prelude::{NamedFrom, PolarsResult};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -19,32 +21,6 @@ pub trait RecordTrait {
     fn initialize_record(&self, record: &mut Record, time: f32);
 
     fn update_record(&self, record: &Record, time: f32) -> PolarsResult<()>;
-}
-
-impl RecordTrait for Transform {
-    fn initialize_record(&self, record: &mut Record, time: f32) {
-        let first_row = polars::df!["Time" => [time], "Position_X" => [self.translation.x], "Position_Y" => [self.translation.y], "Position_Z" => [self.translation.z]].unwrap();
-        let k = format!("Position");
-        match record.dataframes.write() {
-            Ok(mut rw_guard) => {
-                rw_guard.insert(k, first_row);
-            }
-            Err(_) => todo!(),
-        }
-    }
-
-    fn update_record(&self, record: &Record, time: f32) -> PolarsResult<()> {
-        let new_row = &polars::df!["Time" => [time], "Position_X" => [self.translation.x], "Position_Y" => [self.translation.y], "Position_Z" => [self.translation.z]].unwrap();
-        let k = format!("Position");
-
-        match record.dataframes.clone().write() {
-            Ok(mut df) => {
-                df.get_mut(&k).unwrap().vstack_mut(new_row)?;
-                Ok(())
-            }
-            Err(_) => todo!(),
-        }
-    }
 }
 
 #[derive(Resource)]
@@ -66,18 +42,13 @@ pub struct DataFrameSender(pub flume::Sender<DataframeStore>);
 #[allow(unused_variables)]
 pub fn initialize_records(
     mut commands: Commands,
-    query_entities: Query<(Entity, &Name, &RecordInitializer, &dyn RecordTrait)>,
+    query_entities: Query<(Entity, &Name, &RecordInitializer)>,
     world_timer: Res<WorldTimer>,
 ) {
     // iterator over all entities found by the query
-    for (e, n, r_i, t) in query_entities.iter() {
+    for (e, n, r_it) in query_entities.iter() {
         let mut r = Record::default();
         r.name = format!("{}_{}", n.0.clone(), e.index().to_string());
-
-        t.iter().for_each(|c| {
-            // println!("initializing record");
-            c.initialize_record(&mut r, world_timer.timer.elapsed_secs())
-        });
 
         commands
             .entity(e)
@@ -89,18 +60,49 @@ pub fn initialize_records(
     }
 }
 
-/// system to query for all entities that have both Record and Transform components
-/// grabs data from the transform and records it to the record component
-pub fn update_records(records: Query<(&Record, &dyn RecordTrait)>, world_timer: Res<WorldTimer>) {
-    for (record, rt) in records.iter() {
-        for recording_component in rt.iter() {
-            match recording_component.update_record(record, world_timer.timer.elapsed_secs()) {
-                Ok(_) => {}
-                Err(_) => continue,
-            }
+pub struct UpdateRecordEvent {
+    pub record: Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>,
+    pub table_name: String,
+    pub new_row: polars::frame::DataFrame,
+}
+
+pub fn position_update_record_event(
+    transforms: Query<(&Transform, &Record)>,
+    mut record_updates: EventWriter<UpdateRecordEvent>,
+    world_timer: Res<WorldTimer>,
+) {
+    for (t, record) in transforms.iter() {
+        let new_row = polars::df!["Time" => [world_timer.timer.elapsed_secs()], "Position_X" => [t.translation.x], "Position_Y" => [t.translation.y], "Position_Z" => [t.translation.z]].unwrap();
+        let table_name = format!("Position");
+
+        record_updates.send(UpdateRecordEvent {
+            record: record.dataframes.clone(),
+            table_name,
+            new_row,
+        });
+    }
+}
+
+pub fn update_record_event_reader(mut record_updates: EventReader<UpdateRecordEvent>) {
+    for update in record_updates.iter() {
+        match _update_record(update) {
+            Ok(_) => {}
+            Err(_) => todo!(),
         }
     }
 }
 
-#[cfg(test)]
-mod tests {}
+pub fn _update_record(update: &UpdateRecordEvent) -> PolarsResult<()> {
+    match update.record.write() {
+        Ok(mut df) => match df.get_mut(&update.table_name) {
+            Some(df) => Ok({
+                df.vstack_mut(&update.new_row)?;
+            }),
+            None => {
+                df.insert(update.table_name.clone(), update.new_row.clone());
+                Ok(())
+            }
+        },
+        Err(_) => todo!(),
+    }
+}

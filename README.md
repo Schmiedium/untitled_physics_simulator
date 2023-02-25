@@ -10,5 +10,12 @@ There is an included test python file to see what's available
 
 you'll need to supply your own .obj files for now
 
-This is basically brand new and I have just hacked it together, so no judgement please. It is fun though!
+TODO list:
+
+attempt to rework the data collection and get rid of the trait query, it's kind of clunky
+add derive macro for PSComponent
+figure out cpu_thread limiter
+implement wall time for simulation
+document all the code
+fix the namespacing issues
 
