@@ -31,11 +31,6 @@ impl Plugin for BasePlugin {
         app.add_system(update_record_event_reader);
         app.add_system(position_update_record_event);
         app.add_system(test_model_update_record_event);
-        // app.add_system(
-        //     update_records
-        //         .after(initialize_records)
-        //         .after(advance_world_time),
-        // );
         app.add_system(exit_system);
     }
 }
@@ -120,7 +115,6 @@ fn setup_physics(
 /// and then removes the `ColliderInitializer` component
 ///
 /// This can probably be done better/more efficiently if done with events or something
-/// same with RecordInitializer
 fn initialize_colliders(
     mut commands: Commands,
     q: Query<(Entity, &simulation_builder::ColliderInitializer)>,

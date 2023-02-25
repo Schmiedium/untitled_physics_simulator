@@ -1,11 +1,11 @@
-from untitled_physics_simulator._untitled_physics_simulator import Simulation, Entity, TestModel, Warhead, simulation_run_headless, simulation_run
+from untitled_physics_simulator import Simulation, Entity, TestModel, Warhead, simulation_run_headless, simulation_run
 import pyarrow
 import polars as pl
 
 
 def do_simulation_things():
     #create simulation with 0.001 seconds per timestep, and a sim duration of 5.0 seconds. ~5000 steps
-    sim = Simulation(0.00001, 1000000000.0, 3600.0)
+    sim = Simulation(0.000001, 1.0, 36.0)
 
     geo = "/home/alex/Documents/3D_Geometry/OBJs/icosahedron.obj"
 

@@ -14,7 +14,11 @@ TODO list:
 
 add derive macro for PSComponent
 figure out cpu_thread limiter
-implement wall time for simulation
 document all the code
 fix the namespacing issues
+redo the entity indexing, add the binary search thing for ensuring all entities have unqiue indices
+implement caching for convex decomposition of geometry and expose the option
+figure out how to expose mass_properties for colliders (mainly inertia tensor and mass, also elasticity)
+add drag force to all entities (going to be bad time)
+
 

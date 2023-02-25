@@ -8,8 +8,7 @@ edition = "2021"
 name = "untitled_physics_simulator"
 crate-type = ["cdylib"]
 
-[package.metadata.maturin]
-name = "untitled_physics_simulator._untitled_physics_simulator"
+
 
 [dependencies]
 bevy = { version = "0.9.0" }

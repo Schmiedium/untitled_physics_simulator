@@ -18,7 +18,7 @@ type DataframeStore = HashMap<String, Arc<RwLock<HashMap<String, polars::frame::
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn _untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
+fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
     //add functions to this module
     m.add_function(wrap_pyfunction!(simulation_run, m)?)?;
     m.add_function(wrap_pyfunction!(simulation_run_headless, m)?)?;
