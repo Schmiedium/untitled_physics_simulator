@@ -6,6 +6,7 @@ use bevy::prelude::PluginGroup;
 use bevy_rapier3d::prelude::{NoUserData, RapierPhysicsPlugin};
 use bevy_rapier3d::render::RapierDebugRenderPlugin;
 
+/// Plugin group for the visualized run, relies on default plugins to be added to the app
 pub struct UntitledPluginsGroup;
 
 impl PluginGroup for UntitledPluginsGroup {
@@ -18,6 +19,7 @@ impl PluginGroup for UntitledPluginsGroup {
     }
 }
 
+/// Plugin group for running headless, relies on MinimalPlugins to be added to the app
 pub struct UntitledPluginsGroupHeadless;
 
 impl PluginGroup for UntitledPluginsGroupHeadless {

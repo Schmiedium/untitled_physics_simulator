@@ -15,14 +15,6 @@ pub struct Record {
     pub name: String,
     pub dataframes: Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>,
 }
-
-#[bevy_trait_query::queryable]
-pub trait RecordTrait {
-    fn initialize_record(&self, record: &mut Record, time: f32);
-
-    fn update_record(&self, record: &Record, time: f32) -> PolarsResult<()>;
-}
-
 #[derive(Resource)]
 pub struct DataframeStoreResource(pub DataframeStore);
 

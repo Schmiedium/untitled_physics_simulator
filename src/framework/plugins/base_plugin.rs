@@ -11,6 +11,7 @@ use bevy_rapier3d::prelude::Collider;
 
 use crate::framework::py_modules::simulation_builder;
 
+/// Base plugin to collect all the framework functionality to be added to a plugin group
 pub(super) struct BasePlugin;
 
 impl Plugin for BasePlugin {
