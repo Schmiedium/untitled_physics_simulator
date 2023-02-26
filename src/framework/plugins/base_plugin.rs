@@ -1,13 +1,10 @@
-use crate::{
-    framework::{
-        data_collection::records::{
-            initialize_records, position_update_record_event, update_record_event_reader,
-            DataFrameSender, DataframeStoreResource, Record, UpdateRecordEvent,
-        },
-        geometry::geometry_parsing,
-        py_modules::simulation_builder::WallTime,
+use crate::framework::{
+    data_collection::records::{
+        initialize_records, position_update_record_event, update_record_event_reader,
+        DataFrameSender, DataframeStoreResource, Record, UpdateRecordEvent,
     },
-    models::test::test_model::{test_model_update_record_event, TestModel},
+    geometry::geometry_parsing,
+    py_modules::simulation_builder::WallTime,
 };
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::Collider;
@@ -23,14 +20,12 @@ impl Plugin for BasePlugin {
         app.register_type::<simulation_builder::Shape>();
         app.register_type::<simulation_builder::ColliderInitializer>();
         app.register_type::<simulation_builder::RecordInitializer>();
-        app.register_type::<TestModel>();
         app.add_startup_system(setup_physics);
         app.add_system(initialize_colliders);
         app.add_system(initialize_records);
         app.add_system(advance_world_time);
         app.add_system(update_record_event_reader);
         app.add_system(position_update_record_event);
-        app.add_system(test_model_update_record_event);
         app.add_system(exit_system);
     }
 }
