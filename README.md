@@ -21,3 +21,4 @@ figure out how to expose mass_properties for colliders (mainly inertia tensor an
 add drag force to all entities (going to be bad time)
 
 
+I think if I want to add bullets as entities, they would need to be resources, like the simulation object. Then add a flag to the gun for which bullet to use, query for Bullet resources and get a matching one

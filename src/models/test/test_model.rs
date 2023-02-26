@@ -38,6 +38,7 @@ impl TestModel {
 
     /// This method has to be implemented in order for the add_component method of entity_builder::entity
     /// to work properly. A python error will be raised if it is not.
+    /// This method can be copied wholesale to a new thing
     pub fn attach_to_entity(&self, e: &mut Entity) -> pyo3::PyResult<Entity> {
         let res = self.clone()._attach_to_entity(e.to_owned());
         Ok(res)
