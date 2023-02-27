@@ -10,6 +10,8 @@ There is an included test python file to see what's available
 
 you'll need to supply your own .obj files for now
 
+This project assumes NUE coordinates, that is positive x-axis is North, positive y-axis is Up, and positive z-axis is West.
+
 TODO list:
 
 let PSComponent derive macro derive the necessary trait bounds as well, so we only need to derive the one trait

@@ -1,10 +1,20 @@
 use bevy::{
-    prelude::{Component, EventReader, EventWriter, Plugin, Query, Res},
+    prelude::{
+        Bundle, Commands, Component, EventReader, EventWriter, Plugin, Query, ReflectComponent,
+        Res, Transform, With,
+    },
     reflect::{FromReflect, Reflect},
+    transform::TransformBundle,
 };
-use bevy_rapier3d::{na::Vector3, prelude::Real};
-use polars::df;
-use polars::prelude::NamedFrom;
+use bevy_rapier3d::{
+    na::Vector3,
+    prelude::{
+        Ccd, Collider, ColliderMassProperties, ExternalImpulse, GravityScale, Real, RigidBody,
+        Sensor, Velocity,
+    },
+};
+use glam::{Quat, Vec3};
+use polars::{df, prelude::NamedFrom};
 
 use crate::framework::{
     data_collection::records::{Record, UpdateRecordEvent},
@@ -17,9 +27,14 @@ use pyo3::{pyclass, pymethods};
 
 #[pyclass]
 #[derive(Component, Reflect, FromReflect, Default, Clone, PSComponent)]
-struct Gun {
+#[reflect(Component)]
+pub struct Gun {
     ammo_count: u32,
 }
+
+#[derive(Component, Reflect, FromReflect, Default)]
+#[reflect(Component)]
+pub struct CanFire;
 
 #[pymethods]
 impl Gun {
@@ -29,8 +44,48 @@ impl Gun {
     }
 
     pub fn attach_to_entity(&self, e: &mut Entity) -> pyo3::PyResult<Entity> {
+        e.components.push(Box::new(CanFire));
         let res = self.clone()._attach_to_entity(e.to_owned());
         Ok(res)
+    }
+}
+
+impl Gun {
+    fn fire(&mut self, fm: &FireMission, t: &Transform) -> impl Bundle {
+        let north = Quat::from_xyzw(1.0, 0.0, 0.0, 0.0);
+
+        let fire_direction = (fm.elevation.inverse() * fm.azimuth).inverse()
+            * north
+            * (fm.elevation.inverse() * fm.azimuth);
+
+        // construct the direction of fire
+        let fire_velocity = fire_direction.xyz().normalize() * fm.muzzle_velocity;
+
+        println!("{:?},{:?}", fire_direction, fire_velocity);
+        // construct the impulse necessary for the desired muzzle velocity
+        let impulse = ExternalImpulse {
+            impulse: fire_velocity,
+            torque_impulse: Vec3::default(),
+        };
+
+        // construct the record component to collect all the data here
+        let mut bullet_record = Record::default();
+        bullet_record.name = format!("Bullet");
+        let bullet = (
+            RigidBody::Dynamic,
+            Collider::ball(0.2),
+            ColliderMassProperties::Mass(10.0),
+            impulse,
+            Sensor,
+            TransformBundle::from(t.clone()),
+            bullet_record,
+            GravityScale(1.0),
+            Ccd::enabled(),
+        );
+
+        self.ammo_count -= 1;
+
+        bullet
     }
 }
 
@@ -61,23 +116,36 @@ fn gun_update_record_event(
 }
 
 fn read_fire_mission(
-    guns: Query<(&Record, &Gun)>,
+    mut commands: Commands,
+    mut guns: Query<(bevy::prelude::Entity, &mut Gun, &Transform, Option<&Record>), With<CanFire>>,
     mut fire_missions: EventReader<FireMission>,
     mut record_updates: EventWriter<UpdateRecordEvent>,
+    world_timer: Res<WorldTimer>,
 ) {
-    for fm in fire_missions.iter() {
-        let table_name = format!("FireMissions");
-        let new_row = df!["Time" => [fm.time], 
-                                        "X" => [fm.coordinates.x],
-                                        "Y" => [fm.coordinates.y],
-                                        "Z" => [fm.coordinates.z]]
-        .unwrap();
+    // Match all guns that can fire with a fire mission by creating a zipped iterator
+    // could destructure the iterator at x, but thought it might be more readable to destructure afterwards
+    for x in fire_missions.iter().zip(guns.iter_mut()) {
+        // destructure into tuple thing
+        let fm = x.0;
+        let mut gun = x.1;
 
-        // record_updates.send(UpdateRecordEvent {
-        //     record: fm.record.dataframes.clone(),
-        //     table_name,
-        //     new_row,
-        // });
+        //call fire method on the gun
+        let bullet = gun.1.fire(fm, gun.2);
+        commands.spawn(bullet);
+        commands.entity(gun.0).remove::<CanFire>();
+
+        if let Some(r) = gun.3 {
+            let table_name = format!("FireMissionsExecuted");
+            let new_row = df!["FireMissionIssueTime" => [fm.time], "FireMissionExecutedTime" => [world_timer.timer.elapsed_secs()] ].unwrap();
+
+            let update = UpdateRecordEvent {
+                record: r.dataframes.clone(),
+                table_name,
+                new_row,
+            };
+
+            record_updates.send(update);
+        }
     }
 }
 
@@ -87,24 +155,51 @@ fn send_fire_mission(
 ) {
     let fm = FireMission {
         time: world_timer.timer.elapsed_secs(),
-        coordinates: Vector3::new(100.0, 4.0, 100.0),
+        muzzle_velocity: 500.0,
+        azimuth: bevy_rapier3d::math::Rot::from_rotation_y(std::f32::consts::PI / 4.0),
+        elevation: bevy_rapier3d::math::Rot::from_rotation_z(std::f32::consts::PI / 4.0),
     };
     outgoing_missions.send(fm);
 }
 
-struct FireMission {
-    time: Real,
-    coordinates: Vector3<Real>,
+fn track_velocities(
+    world_timer: Res<WorldTimer>,
+    mut record_updates: EventWriter<UpdateRecordEvent>,
+    velocities: Query<(&Velocity, &Record)>,
+) {
+    for (v, r) in velocities.iter() {
+        // println!("tracking {} velocities", velocities.iter().len());
+        let table_name = format!("Velocity");
+        let new_row = df!["time" => [world_timer.timer.elapsed_secs()], "X" => [v.linvel.x], "Y" => [v.linvel.y], "Z" => [v.linvel.z] ].unwrap();
+
+        let update = UpdateRecordEvent {
+            record: r.dataframes.clone(),
+            table_name,
+            new_row,
+        };
+
+        record_updates.send(update);
+    }
 }
 
-struct GunPlugin;
+#[derive(Debug)]
+struct FireMission {
+    time: Real,
+    muzzle_velocity: Real,
+    azimuth: bevy_rapier3d::math::Rot,
+    elevation: bevy_rapier3d::math::Rot,
+}
+
+pub struct GunPlugin;
 
 impl Plugin for GunPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.register_type::<Gun>();
+        app.register_type::<CanFire>();
         app.add_event::<FireMission>();
         app.add_system(read_fire_mission);
         app.add_system(send_fire_mission);
+        app.add_system(track_velocities);
         app.add_system(gun_update_record_event);
     }
 }

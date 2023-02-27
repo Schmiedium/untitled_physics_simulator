@@ -1,6 +1,9 @@
 use std::{path::PathBuf, sync::Arc};
 
-use crate::models::test::test_model::TestModel;
+use crate::models::{
+    gun::gun::{CanFire, Gun},
+    test::test_model::TestModel,
+};
 
 use super::entity_builder::Entity;
 use bevy::{
@@ -99,6 +102,8 @@ impl Simulation {
         new_sim.types.register::<RecordInitializer>();
         new_sim.types.register::<ColliderInitializer>();
         new_sim.types.register::<TestModel>();
+        new_sim.types.register::<Gun>();
+        new_sim.types.register::<CanFire>();
 
         //End registering types
 

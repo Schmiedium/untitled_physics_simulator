@@ -1,3 +1,4 @@
+use crate::models::gun::gun::GunPlugin;
 use crate::models::test::test_model::TestPlugin;
 
 use super::base_plugin::BasePlugin;
@@ -15,6 +16,7 @@ impl PluginGroup for UntitledPluginsGroup {
             .add(BasePlugin)
             .add(RapierPhysicsPlugin::<NoUserData>::default())
             .add(RapierDebugRenderPlugin::default())
+            .add(GunPlugin)
             .add(TestPlugin)
     }
 }
@@ -30,6 +32,7 @@ impl PluginGroup for UntitledPluginsGroupHeadless {
             .add(bevy::scene::ScenePlugin::default())
             .add(BasePlugin)
             .add(RapierPhysicsPlugin::<NoUserData>::default())
+            .add(GunPlugin)
             .add(TestPlugin)
     }
 }

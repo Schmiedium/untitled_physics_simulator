@@ -1,4 +1,4 @@
-from untitled_physics_simulator import Simulation, Entity, TestModel, Warhead, simulation_run_headless, simulation_run
+from untitled_physics_simulator import Simulation, Entity, TestModel, Warhead, simulation_run_headless, simulation_run, Gun
 
 
 
@@ -10,18 +10,20 @@ def do_simulation_things():
 
     entities = []
 
-    for x in range(30, 33, 3):
-        for y in range(30, 33, 3):
-            for z in range(30, 33, 3):
-                e = Entity("Dynamic", f"test_{x}_{y}_{z}").add_transform(float(x), float(y), float(z)).add_geometry(geo)
-                test = TestModel("test")
-                e = e.add_component(test)
+    for x in range(0, 3, 3):
+        for y in range(0, 3, 3):
+            for z in range(0, 3, 3):
+                e = Entity("Dynamic", f"test_{x}_{y}_{z}").add_transform(float(x), float(y), float(z))
+                # .add_geometry(geo)
+                gun = Gun(4)
+
+                e = e.add_component(gun)
                 entities.append(e)
 
     sim.add_entities(entities)
 
     print(f"simulation constructed with {len(entities)} entities")
-    return simulation_run_headless(sim)
+    return simulation_run(sim)
 
 
 def main():

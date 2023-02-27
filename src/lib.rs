@@ -27,6 +27,7 @@ fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<entity_builder::Entity>()?;
     m.add_class::<py_warhead::Warhead>()?;
     m.add_class::<crate::models::test::test_model::TestModel>()?;
+    m.add_class::<crate::models::gun::gun::Gun>()?;
 
     Ok(())
 }

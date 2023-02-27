@@ -225,28 +225,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy-trait-query"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41d35165b0f304ac8dc4e539f7ae34049da9efbbdad2d55c99f286dec0f2217e"
-dependencies = [
- "bevy",
- "bevy-trait-query-impl",
-]
-
-[[package]]
-name = "bevy-trait-query-impl"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaffadef086eb7cb671d7211dc56439e09852da5a933703882858e5377dbc233"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "bevy_animation"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4042,7 +4020,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bevy",
- "bevy-trait-query",
  "bevy_rapier3d",
  "flume",
  "glam",
