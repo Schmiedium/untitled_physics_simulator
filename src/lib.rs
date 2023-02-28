@@ -118,7 +118,6 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
         .run();
 
     let dfs = receiver.recv().unwrap();
-    //
 
     dataframe_conversions::dataframe_hashmap_to_python_dict(dfs)
 }

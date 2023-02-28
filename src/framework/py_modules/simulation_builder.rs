@@ -119,6 +119,7 @@ impl Simulation {
         position: &PyTuple,
         velocity: &PyTuple,
         geometry: String,
+        collider_type: String,
     ) -> PyResult<()> {
         //BEGIN Error handling
         if self.entity_ids.contains(&index) {
@@ -163,9 +164,16 @@ impl Simulation {
             angvel: Vec3::new(0.0, 0.0, 0.0),
         };
 
-        let ci = ColliderInitializer {
-            path: PathBuf::from(geometry),
-            shape: Shape::Trimesh,
+        let ci = match &*collider_type {
+            "Trimesh" => ColliderInitializer {
+                path: PathBuf::from(geometry),
+                shape: Shape::Trimesh,
+            },
+            "Computed" => ColliderInitializer {
+                path: PathBuf::from(geometry),
+                shape: Shape::Computed,
+            },
+            _ => return Err(PyValueError::new_err("args")),
         };
 
         //END setting up necessary components
@@ -248,7 +256,6 @@ pub struct ColliderInitializer {
 }
 
 #[derive(Reflect, FromReflect, Default)]
-
 pub enum Shape {
     #[default]
     Trimesh,

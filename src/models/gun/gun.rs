@@ -6,12 +6,8 @@ use bevy::{
     reflect::{FromReflect, Reflect},
     transform::TransformBundle,
 };
-use bevy_rapier3d::{
-    na::Vector3,
-    prelude::{
-        Ccd, Collider, ColliderMassProperties, ExternalImpulse, GravityScale, Real, RigidBody,
-        Sensor, Velocity,
-    },
+use bevy_rapier3d::prelude::{
+    Ccd, Collider, ColliderMassProperties, ExternalImpulse, GravityScale, Real, RigidBody, Sensor,
 };
 use glam::{Quat, Vec3};
 use polars::{df, prelude::NamedFrom};
@@ -91,14 +87,14 @@ impl Gun {
 
 fn gun_update_record_event(
     //Query for testmodel and record
-    test_models: Query<(&Gun, &Record)>,
+    guns: Query<(&Gun, &Record)>,
     // EventWriter will take the event we construct and write to the system to be picked up later
     mut record_updates: EventWriter<UpdateRecordEvent>,
     // only here to have the time in one of the dataframe columns
     world_timer: Res<WorldTimer>,
 ) {
     //iterate over the results from the query
-    for (t, record) in test_models.iter() {
+    for (t, record) in guns.iter() {
         // construct dataframe to append with the df!() macro from polars, returns a Result so unwrap for now
         let new_row =
             polars::df!["Time" => [world_timer.timer.elapsed_secs()], "AmmoCount" => [t.ammo_count]]
@@ -162,26 +158,6 @@ fn send_fire_mission(
     outgoing_missions.send(fm);
 }
 
-fn track_velocities(
-    world_timer: Res<WorldTimer>,
-    mut record_updates: EventWriter<UpdateRecordEvent>,
-    velocities: Query<(&Velocity, &Record)>,
-) {
-    for (v, r) in velocities.iter() {
-        // println!("tracking {} velocities", velocities.iter().len());
-        let table_name = format!("Velocity");
-        let new_row = df!["time" => [world_timer.timer.elapsed_secs()], "X" => [v.linvel.x], "Y" => [v.linvel.y], "Z" => [v.linvel.z] ].unwrap();
-
-        let update = UpdateRecordEvent {
-            record: r.dataframes.clone(),
-            table_name,
-            new_row,
-        };
-
-        record_updates.send(update);
-    }
-}
-
 #[derive(Debug)]
 struct FireMission {
     time: Real,
@@ -199,7 +175,6 @@ impl Plugin for GunPlugin {
         app.add_event::<FireMission>();
         app.add_system(read_fire_mission);
         app.add_system(send_fire_mission);
-        app.add_system(track_velocities);
         app.add_system(gun_update_record_event);
     }
 }

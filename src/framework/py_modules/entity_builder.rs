@@ -86,10 +86,17 @@ impl Entity {
         Ok(self.to_owned())
     }
 
-    fn add_geometry(&mut self, geometry: String) -> PyResult<Self> {
-        let ci = ColliderInitializer {
-            path: PathBuf::from(geometry),
-            shape: Shape::Trimesh,
+    fn add_geometry(&mut self, geometry: String, collider_type: String) -> PyResult<Self> {
+        let ci = match &*collider_type {
+            "Trimesh" => ColliderInitializer {
+                path: PathBuf::from(geometry),
+                shape: Shape::Trimesh,
+            },
+            "Computed" => ColliderInitializer {
+                path: PathBuf::from(geometry),
+                shape: Shape::Computed,
+            },
+            _ => return Err(PyValueError::new_err(format!("collider_type must be either \"Trimesh\" or \"Computed\", {} is not a valid collider type", collider_type))),
         };
 
         self.components.push(Box::new(ci));
