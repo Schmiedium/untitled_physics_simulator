@@ -36,7 +36,7 @@ fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
 fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObject> {
     // Create world timer resource
     // This will interact with the timing system to make sure we advance and stop
-    // with the correct timinings
+    // with the correct timings
     let (world_timer, config) = setup_sim_resources(simulation.sim_duration, simulation.timestep);
 
     // DataframeStore is a tuple struct with one element, this facilitates getting output data from bevy
@@ -73,7 +73,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         // this should be redone with events or something
         .run();
 
-    // receiver from earlier checks if anything has been sent, panincs if there is no sender (usually means app didn't run)
+    // receiver from earlier checks if anything has been sent, panics if there is no sender (usually means app didn't run)
     let dfs = receiver.recv().unwrap();
 
     // call function to convert our hashmap into a python dictionary usable in python, and return it

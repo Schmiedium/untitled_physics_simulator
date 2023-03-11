@@ -6,6 +6,7 @@ use crate::models::{
 };
 
 use super::entity_builder::Entity;
+use bevy::reflect::TypeRegistryArc;
 use bevy::{
     prelude::{Component, GlobalTransform, ReflectComponent, Resource, Transform, Vec3},
     reflect::{FromReflect, Reflect, TypeRegistry, TypeRegistryInternal},
@@ -13,6 +14,7 @@ use bevy::{
     transform::TransformBundle,
 };
 use bevy_rapier3d::prelude::{Real, RigidBody, Velocity};
+use parking_lot::RwLock;
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyTuple};
 use serde::de::DeserializeSeed;
 
@@ -190,7 +192,7 @@ impl Simulation {
 
         //End boxing all entities
 
-        //initialize data store for constucting simulation object
+        //initialize data store for constructing simulation object
         let components: Vec<Box<dyn Reflect>> =
             vec![trans_b, gtrans_b, vel_comp_b, body_b, n_b, ri_b, ci_b];
 
@@ -228,6 +230,22 @@ impl Simulation {
         Ok(())
     }
 
+    pub fn scene_to_ron(&self) -> PyResult<String> {
+        let temp = self.clone();
+        let registry = TypeRegistryArc {
+            internal: Arc::new(RwLock::new(temp.types)),
+        };
+        let try_serialize = self.scene.serialize_ron(&registry);
+        match try_serialize {
+            Ok(x) => Ok(x),
+            Err(_) => {
+                todo!()
+            }
+        }
+    }
+}
+
+impl Simulation {
     fn get_first_unused_index(&self) -> u32 {
         let len = self.entity_ids.len() as u32;
         if !self.entity_ids.contains(&len) {

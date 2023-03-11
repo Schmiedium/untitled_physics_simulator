@@ -2,6 +2,7 @@ use crate::models::gun::gun::GunPlugin;
 use crate::models::test::test_model::TestPlugin;
 
 use super::base_plugin::BasePlugin;
+use crate::framework::physics::aerodynamics::AerodynamicsPlugin;
 use bevy::app::PluginGroupBuilder;
 use bevy::prelude::PluginGroup;
 use bevy_rapier3d::prelude::{NoUserData, RapierPhysicsPlugin};
@@ -18,6 +19,7 @@ impl PluginGroup for UntitledPluginsGroup {
             .add(RapierDebugRenderPlugin::default())
             .add(GunPlugin)
             .add(TestPlugin)
+            .add(AerodynamicsPlugin)
     }
 }
 
@@ -34,5 +36,6 @@ impl PluginGroup for UntitledPluginsGroupHeadless {
             .add(RapierPhysicsPlugin::<NoUserData>::default())
             .add(GunPlugin)
             .add(TestPlugin)
+            .add(AerodynamicsPlugin)
     }
 }

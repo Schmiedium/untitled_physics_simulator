@@ -22,8 +22,8 @@ def do_simulation_things():
     sim.add_entities(entities)
 
     print(f"simulation constructed with {len(entities)} entities")
-    return simulation_run(sim)
-
+    # return simulation_run(sim)
+    return sim.scene_to_ron()
 
 def main():
 
