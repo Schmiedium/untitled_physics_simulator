@@ -2,7 +2,7 @@ use crate::models::gun::gun::GunPlugin;
 use crate::models::test::test_model::TestPlugin;
 
 use super::base_plugin::BasePlugin;
-use crate::framework::physics::aerodynamics::AerodynamicsPlugin;
+use crate::framework::physics::aerodynamics::aero_plugin::AerodynamicsPlugin;
 use bevy::app::PluginGroupBuilder;
 use bevy::prelude::PluginGroup;
 use bevy_rapier3d::prelude::{NoUserData, RapierPhysicsPlugin};

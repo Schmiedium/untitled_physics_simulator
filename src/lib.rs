@@ -84,7 +84,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
 fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResult<PyObject> {
     // Create world timer resource
     // This will interact with the timing system to make sure we advance and stop
-    // with the correct timinings
+    // with the correct timings
 
     let (world_timer, config) = setup_sim_resources(simulation.sim_duration, simulation.timestep);
 

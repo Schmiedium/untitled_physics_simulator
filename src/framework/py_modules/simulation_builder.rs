@@ -6,6 +6,7 @@ use crate::models::{
 };
 
 use super::entity_builder::Entity;
+use crate::framework::physics::aerodynamics::drag::DragCurve;
 use bevy::reflect::TypeRegistryArc;
 use bevy::{
     prelude::{Component, GlobalTransform, ReflectComponent, Resource, Transform, Vec3},
@@ -93,7 +94,7 @@ impl Simulation {
         new_sim.types.register::<Velocity>();
         new_sim.types.register::<RigidBody>();
         new_sim.types.register::<glam::Quat>();
-        new_sim.types.register::<glam::Vec3>();
+        new_sim.types.register::<Vec3>();
         new_sim.types.register::<glam::Vec3A>();
         new_sim.types.register::<glam::Affine3A>();
         new_sim.types.register::<glam::Mat3A>();
@@ -106,6 +107,7 @@ impl Simulation {
         new_sim.types.register::<TestModel>();
         new_sim.types.register::<Gun>();
         new_sim.types.register::<CanFire>();
+        new_sim.types.register::<DragCurve>();
 
         //End registering types
 

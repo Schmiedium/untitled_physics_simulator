@@ -6,6 +6,7 @@ use bevy::{
     reflect::{FromReflect, Reflect},
     transform::TransformBundle,
 };
+use bevy_rapier3d::dynamics::ExternalForce;
 use bevy_rapier3d::prelude::{
     Ccd, Collider, ColliderMassProperties, ExternalImpulse, GravityScale, Real, RigidBody, Sensor,
 };
@@ -72,6 +73,10 @@ impl Gun {
             Collider::ball(0.2),
             ColliderMassProperties::Mass(10.0),
             impulse,
+            ExternalForce {
+                force: Default::default(),
+                torque: Default::default(),
+            },
             Sensor,
             TransformBundle::from(t.clone()),
             bullet_record,
