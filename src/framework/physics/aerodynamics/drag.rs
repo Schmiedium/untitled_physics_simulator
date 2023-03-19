@@ -46,9 +46,14 @@ pub(super) fn drag_force(mut ext_forces: Query<(&mut ExternalForce, &Velocity, &
 
         let total_yaw = t.rotation.xyz().angle_between(vel_vec);
 
+        println!("yaw is: {:?}", total_yaw);
+
         let delta: Real = total_yaw.sin();
         // ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
-        let drag_coefficient = zero_yaw_drag_coefficient + yaw_drag_coefficient * delta.powf(2.0);
+        let drag_coefficient = zero_yaw_drag_coefficient;
+        // + yaw_drag_coefficient * delta.powf(2.0);
+
+        println!("drag_coefficient is: {:?}", drag_coefficient);
 
         // Declaring the resultant force vector that will be added to our "external force" object
         let drag_force =
@@ -56,6 +61,7 @@ pub(super) fn drag_force(mut ext_forces: Query<(&mut ExternalForce, &Velocity, &
             -0.5 * rho * ref_area * vel_mag.powf(2.0) * drag_coefficient * drag_force_direction;
 
         println!("drag force is happening with magnitude: {:?}", &drag_force);
+
         f.force = f.force + drag_force;
     }
 }

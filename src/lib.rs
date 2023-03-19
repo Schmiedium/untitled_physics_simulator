@@ -14,7 +14,7 @@ use std::sync::RwLock;
 mod framework;
 mod models;
 
-type DataframeStore = HashMap<String, Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>;
+type DataframeStore = HashMap<String, Arc<RwLock<HashMap<String, DataFrame>>>>;
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -26,8 +26,8 @@ fn untitled_physics_simulator(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<simulation_builder::Simulation>()?;
     m.add_class::<entity_builder::Entity>()?;
     m.add_class::<py_warhead::Warhead>()?;
-    m.add_class::<crate::models::test::test_model::TestModel>()?;
-    m.add_class::<crate::models::gun::gun::Gun>()?;
+    m.add_class::<models::test::test_model::TestModel>()?;
+    m.add_class::<models::gun::gun::Gun>()?;
 
     Ok(())
 }
@@ -64,7 +64,7 @@ fn simulation_run(simulation: simulation_builder::Simulation) -> PyResult<PyObje
         .insert_resource(simulation)
         .insert_resource(bevy::winit::WinitSettings {
             return_from_run: true,
-            ..bevy::prelude::default()
+            ..default()
         })
         //setting up the camera for rendering
         .add_startup_system(framework::camera::spawn_camera)
@@ -110,8 +110,6 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
         .insert_resource(world_timer)
         .insert_resource(WallTime(simulation.wall_time))
         .insert_resource(simulation)
-        .init_resource::<bevy::window::Windows>()
-        .add_asset::<bevy::render::mesh::Mesh>()
         .insert_resource(bevy::app::ScheduleRunnerSettings {
             run_mode: bevy::app::RunMode::Loop { wait: None },
         })

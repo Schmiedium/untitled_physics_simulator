@@ -13,7 +13,7 @@ use pyo3::{
     PyAny, PyObject, PyResult,
 };
 
-type DataframeStore = HashMap<String, Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>>;
+type DataframeStore = HashMap<String, Arc<RwLock<HashMap<String, DataFrame>>>>;
 
 #[pyclass]
 pub struct PySeries {

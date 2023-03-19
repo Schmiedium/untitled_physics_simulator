@@ -9,6 +9,7 @@ use bevy::{
 use bevy_rapier3d::dynamics::ExternalForce;
 use bevy_rapier3d::prelude::{
     Ccd, Collider, ColliderMassProperties, ExternalImpulse, GravityScale, Real, RigidBody, Sensor,
+    Velocity,
 };
 use glam::{Quat, Vec3};
 use polars::{df, prelude::NamedFrom};
@@ -70,13 +71,11 @@ impl Gun {
         bullet_record.name = format!("Bullet");
         let bullet = (
             RigidBody::Dynamic,
-            Collider::ball(0.2),
+            Collider::ball(1.0),
             ColliderMassProperties::Mass(10.0),
             impulse,
-            ExternalForce {
-                force: Default::default(),
-                torque: Default::default(),
-            },
+            ExternalForce::default(),
+            Velocity::default(),
             Sensor,
             TransformBundle::from(t.clone()),
             bullet_record,
@@ -102,7 +101,7 @@ fn gun_update_record_event(
     for (t, record) in guns.iter() {
         // construct dataframe to append with the df!() macro from polars, returns a Result so unwrap for now
         let new_row =
-            polars::df!["Time" => [world_timer.timer.elapsed_secs()], "AmmoCount" => [t.ammo_count]]
+            df!["Time" => [world_timer.timer.elapsed_secs()], "AmmoCount" => [t.ammo_count]]
                 .unwrap();
         //table_name is the key for this dataframe in the record hashmap
         let table_name = format!("GunAmmo");

@@ -12,12 +12,13 @@ def do_simulation_things():
 
     x = 0
     z = 0
-    y = 9
+    y = 1
 
     # for x in range(0, 33, 3):
     #     for y in range(9, 33, 3):
     #         for z in range(0, 33, 3):
-    e = Entity("Dynamic", f"test_{x}_{y}_{z}").add_transform(float(x), float(y), float(z)).add_geometry(geo, "Trimesh")
+    e = Entity("Dynamic", f"test_{x}_{y}_{z}").add_transform(float(x), float(y), float(z))\
+        # .add_geometry(geo, "Trimesh")
     gun = Gun(4)
 
     e = e.add_component(gun)
@@ -26,6 +27,7 @@ def do_simulation_things():
     sim.add_entities(entities)
 
     print(f"simulation constructed with {len(entities)} entities")
+    # return simulation_run_headless(sim)
     return simulation_run(sim)
     # return sim.scene_to_ron()
 

@@ -15,7 +15,7 @@ use crate::framework::py_modules::simulation_builder;
 pub(super) struct BasePlugin;
 
 impl Plugin for BasePlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
+    fn build(&self, app: &mut App) {
         app.add_event::<UpdateRecordEvent>();
         app.register_type::<simulation_builder::Name>();
         app.register_type::<simulation_builder::Shape>();

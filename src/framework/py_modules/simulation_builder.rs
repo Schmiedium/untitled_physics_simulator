@@ -43,7 +43,7 @@ impl Clone for Simulation {
         }
 
         let reg_arc = TypeRegistry {
-            internal: Arc::new(parking_lot::RwLock::new(new_types2)),
+            internal: Arc::new(RwLock::new(new_types2)),
         };
 
         let scene_ser = self.scene.serialize_ron(&reg_arc).unwrap();
@@ -140,7 +140,7 @@ impl Simulation {
 
         //match input to supported RigidBody type, return error if invalid
         let body = match &*entity_type {
-            //Dyanmic entity will be acted on by gravity/other forces and potentially collide
+            //Dynamic entity will be acted on by gravity/other forces and potentially collide
             "Dynamic" => RigidBody::Dynamic,
             //Fixed entity will be locked in one position
             "Fixed" => RigidBody::Fixed,
