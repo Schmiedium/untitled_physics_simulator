@@ -33,223 +33,157 @@ impl DragCurve {
 /// Applies the drag force to an entity. Has a number of assumptions that I need to enumerate
 pub(super) fn drag_force(mut ext_forces: Query<(&mut ExternalForce, &Velocity, &Transform)>) {
     for (mut f, v, t) in ext_forces.iter_mut() {
-        // Air density
-        let rho = get_air_density(t);
-        let ref_area = reference_area(1.0);
+        let drag_coefficient = get_linear_drag_coefficient();
 
-        let vel_vec = v.linvel;
-        let vel_mag: Real = vel_vec.length();
-        let drag_force_direction = -vel_vec.normalize();
-
-        let zero_yaw_drag_coefficient = get_linear_drag_coefficient();
-        let yaw_drag_coefficient = 0.0;
-
-        let total_yaw = t.rotation.xyz().angle_between(vel_vec);
-
-        println!("yaw is: {:?}", total_yaw);
-
-        let delta: Real = total_yaw.sin();
-        // ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
-        let drag_coefficient = zero_yaw_drag_coefficient;
-        // + yaw_drag_coefficient * delta.powf(2.0);
-
-        println!("drag_coefficient is: {:?}", drag_coefficient);
-
-        // Declaring the resultant force vector that will be added to our "external force" object
-        let drag_force =
-        // aero blah stuff * force coefficient * force vector
-            -0.5 * rho * ref_area * vel_mag.powf(2.0) * drag_coefficient * drag_force_direction;
-
-        println!("drag force is happening with magnitude: {:?}", &drag_force);
+        let drag_force = get_aero_constant(v, t, 1.0) * drag_coefficient * -v.linvel.normalize();
 
         f.force = f.force + drag_force;
     }
 }
 
 /// Applies the drag force to an entity. Has a number of assumptions that I need to enumerate
-pub(super) fn magnus_force(mut ext_forces: Query<(&mut ExternalForce, &Velocity)>) {
-    for (mut f, v) in ext_forces.iter_mut() {
-        let rho = 0.0;
-        let ref_diam = 0.0;
-        let ref_area = reference_area(ref_diam);
-        let vel_vec = v.linvel;
-        let direction_vec = vel_vec.normalize();
-        let vel_mag: Real = vel_vec.length();
+pub(super) fn magnus_force(mut ext_forces: Query<(&mut ExternalForce, &Velocity, &Transform)>) {
+    for (mut f, v, t) in ext_forces.iter_mut() {
+        let direction_vec = v.linvel.cross(t.rotation.to_scaled_axis()).normalize();
 
-        // Angle of attack - pitch
-        let alpha: Real = 0.0;
-
-        // Angle of sideslip - yaw
-        let beta: Real = 0.0;
-        let delta: Real = ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
-
-        let linear_magnus_coefficient = 0.0;
-        let cubic_magnus_coefficient = 0.0;
-        let magnus_coefficient =
-            linear_magnus_coefficient + cubic_magnus_coefficient * delta.powf(2.0);
-
-        let magnus_force =
-            0.5 * rho * vel_mag.powf(2.0) * ref_area * magnus_coefficient * delta * direction_vec;
+        let magnus_force = get_aero_constant(v, t, 1.0)
+            * get_magnus_force_coefficient()
+            * get_angle_of_attack(v, t)
+            * v.angvel.length()
+            * v.linvel.length_recip()
+            * 1.0
+            * direction_vec;
 
         f.force = f.force + magnus_force;
     }
 }
 
-pub(super) fn lift_force(mut ext_forces: Query<(&mut ExternalForce, &Velocity)>) {
-    for (mut f, v) in ext_forces.iter_mut() {
-        let rho = 0.0;
-        let ref_diam = 0.0;
-        let ref_area = reference_area(ref_diam);
-        let vel_vec = v.linvel;
-        let direction_vec = vel_vec.normalize();
-        let vel_mag: Real = vel_vec.length();
+pub(super) fn lift_force(mut ext_forces: Query<(&mut ExternalForce, &Velocity, &Transform)>) {
+    for (mut f, v, t) in ext_forces.iter_mut() {
+        let direction_vec = v
+            .linvel
+            .cross(t.rotation.to_scaled_axis().cross(v.linvel))
+            .normalize();
 
-        // Angle of attack - pitch
-        let alpha: Real = 0.0;
-
-        // Angle of sideslip - yaw
-        let beta: Real = 0.0;
-        let delta: Real = ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
-        let linear_lift_coefficient = 0.0;
-        let cubic_lift_coefficient = 0.0;
-        let lift_coefficient = linear_lift_coefficient + cubic_lift_coefficient * delta.powf(2.0);
-
-        let lift_force =
-            0.5 * rho * vel_mag.powf(2.0) * ref_area * lift_coefficient * delta * direction_vec;
+        let lift_force = get_aero_constant(v, t, 1.0)
+            * get_lift_force_coefficient()
+            * get_angle_of_attack(v, t).sin()
+            * direction_vec;
 
         f.force = f.force + lift_force;
     }
 }
 
-pub(super) fn pitch_damping_force(mut ext_forces: Query<(&mut ExternalForce, &Velocity)>) {
-    for (mut f, v) in ext_forces.iter_mut() {
-        let rho = 0.0;
-        let ref_diam = 0.0;
-        let ref_area = reference_area(ref_diam);
-        let vel_vec = v.linvel;
-        let direction_vec = vel_vec.normalize();
-        let vel_mag: Real = vel_vec.length();
+pub(super) fn pitch_damping_force(
+    mut ext_forces: Query<(&mut ExternalForce, &Velocity, &Transform)>,
+) {
+    for (mut f, v, t) in ext_forces.iter_mut() {
+        let direction_vec = v.angvel.normalize();
 
-        // Angle of attack - pitch
-        let alpha: Real = 0.0;
+        // NOT CORRECT
+        // MUST FIGURE HOW TO SUBTRACT OUT SPIN ROTATIONAL VELOCITY
 
-        // Angle of sideslip - yaw
-        let beta: Real = 0.0;
-        let delta: Real = ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
-
-        let pitch_damping_force = Vec3::default();
+        let pitch_damping_force = get_aero_constant(v, t, 1.0)
+            * 1.0
+            * 1.0
+            * v.linvel.length_recip()
+            // * v.angvel.length()
+            * get_pitch_damping_force_coefficient()
+            * direction_vec;
 
         f.force = f.force + pitch_damping_force;
     }
 }
 
-pub(super) fn spin_damping_moment(mut ext_forces: Query<(&mut ExternalForce, &Velocity)>) {
-    for (mut t, v) in ext_forces.iter_mut() {
-        let rho = 0.0;
-        let ref_diam = 0.0;
-        let ref_area = reference_area(ref_diam);
-        let vel_vec = v.linvel;
-        let direction_vec = vel_vec.normalize();
-        let vel_mag: Real = vel_vec.length();
+pub(super) fn spin_damping_moment(
+    mut ext_forces: Query<(&mut ExternalForce, &Velocity, &Transform)>,
+) {
+    for (mut f, v, t) in ext_forces.iter_mut() {
+        let direction_vec = -v.angvel.normalize();
 
-        // Angle of attack - pitch
-        let alpha: Real = 0.0;
+        let spin_damping_moment = get_aero_constant(v, t, 1.0)
+            * get_spin_damping_moment_coefficient()
+            * 1.0
+            * 1.0
+            * v.angvel.length()
+            * v.linvel.length_recip()
+            * direction_vec;
 
-        // Angle of sideslip - yaw
-        let beta: Real = 0.0;
-        let delta: Real = ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
-
-        let spin_damping_moment = Vec3::default();
-
-        t.torque = t.torque + spin_damping_moment;
+        f.torque = f.torque + spin_damping_moment;
     }
 }
 
-pub(super) fn rolling_moment(mut ext_forces: Query<(&mut ExternalForce, &Velocity)>) {
-    for (mut t, v) in ext_forces.iter_mut() {
-        let rho = 0.0;
-        let ref_diam = 0.0;
-        let ref_area = reference_area(ref_diam);
-        let vel_vec = v.linvel;
-        let direction_vec = vel_vec.normalize();
-        let vel_mag: Real = vel_vec.length();
+pub(super) fn rolling_moment(mut ext_forces: Query<(&mut ExternalForce, &Velocity, &Transform)>) {
+    for (mut f, v, t) in ext_forces.iter_mut() {
+        let fin_cant_angle = 0.0;
 
-        // Angle of attack - pitch
-        let alpha: Real = 0.0;
+        let direction_vec = -v.angvel.normalize();
 
-        // Angle of sideslip - yaw
-        let beta: Real = 0.0;
-        let delta: Real = ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
+        let rolling_moment = get_aero_constant(v, t, 1.0)
+            * get_rolling_moment_coefficient()
+            * 1.0
+            * fin_cant_angle
+            * direction_vec;
 
-        let rolling_moment = Vec3::default();
-
-        t.torque = t.torque + rolling_moment;
+        f.torque = f.torque + rolling_moment;
     }
 }
 
-pub(super) fn overturning_moment(mut ext_forces: Query<(&mut ExternalForce, &Velocity)>) {
-    for (mut t, v) in ext_forces.iter_mut() {
-        let rho = 0.0;
-        let ref_diam = 0.0;
-        let ref_area = reference_area(ref_diam);
-        let vel_vec = v.linvel;
-        let direction_vec = vel_vec.normalize();
-        let vel_mag: Real = vel_vec.length();
+pub(super) fn overturning_moment(
+    mut ext_forces: Query<(&mut ExternalForce, &Velocity, &Transform)>,
+) {
+    for (mut f, v, t) in ext_forces.iter_mut() {
+        let direction_vec = v.linvel.cross(t.rotation.to_scaled_axis()).normalize();
 
-        // Angle of attack - pitch
-        let alpha: Real = 0.0;
+        let overturning_moment = get_aero_constant(v, t, 1.0)
+            * 1.0
+            * get_overturning_moment_coefficient()
+            * get_angle_of_attack(v, t).sin()
+            * direction_vec;
 
-        // Angle of sideslip - yaw
-        let beta: Real = 0.0;
-        let delta: Real = ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
-
-        let overturning_moment = Vec3::default();
-
-        t.torque = t.torque + overturning_moment;
+        f.torque = f.torque + overturning_moment;
     }
 }
 
-pub(super) fn magnus_moment(mut ext_forces: Query<(&mut ExternalForce, &Velocity)>) {
-    for (mut t, v) in ext_forces.iter_mut() {
-        let rho = 0.0;
-        let ref_diam = 0.0;
-        let ref_area = reference_area(ref_diam);
-        let vel_vec = v.linvel;
-        let direction_vec = vel_vec.normalize();
-        let vel_mag2: Real = vel_vec.length_squared();
+pub(super) fn magnus_moment(mut ext_forces: Query<(&mut ExternalForce, &Velocity, &Transform)>) {
+    for (mut f, v, t) in ext_forces.iter_mut() {
+        let direction_vec = t
+            .rotation
+            .to_scaled_axis()
+            .cross(v.linvel.cross(t.rotation.to_scaled_axis()))
+            .normalize();
 
-        // Angle of attack - pitch
-        let alpha: Real = 0.0;
+        let magnus_moment = get_aero_constant(v, t, 1.0)
+            * 1.0
+            * 1.0
+            * v.linvel.length_recip()
+            * v.angvel.length()
+            * get_magnus_moment_coefficient()
+            * get_angle_of_attack(v, t).sin()
+            * direction_vec;
 
-        // Angle of sideslip - yaw
-        let beta: Real = 0.0;
-        let delta: Real = ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
-
-        let magnus_moment = Vec3::default();
-
-        t.torque = t.torque + magnus_moment;
+        f.torque = f.torque + magnus_moment;
     }
 }
 
-pub(super) fn pitch_damping_moment(mut ext_forces: Query<(&mut ExternalForce, &Velocity)>) {
-    for (mut t, v) in ext_forces.iter_mut() {
-        let rho = 0.0;
-        let ref_diam = 0.0;
-        let ref_area = reference_area(ref_diam);
-        let vel_vec = v.linvel;
-        let direction_vec = vel_vec.normalize();
-        let vel_mag: Real = vel_vec.length();
+pub(super) fn pitch_damping_moment(
+    mut ext_forces: Query<(&mut ExternalForce, &Velocity, &Transform)>,
+) {
+    for (mut f, v, t) in ext_forces.iter_mut() {
+        let direction_vec = t.rotation.to_scaled_axis().cross(v.angvel.normalize());
 
-        // Angle of attack - pitch
-        let alpha: Real = 0.0;
+        // NOT CORRECT
+        // MUST FIGURE HOW TO SUBTRACT OUT SPIN ROTATIONAL VELOCITY
 
-        // Angle of sideslip - yaw
-        let beta: Real = 0.0;
-        let delta: Real = ((alpha.sin() * beta.cos()).powf(2.0) + (beta.sin().powf(2.0))).powf(0.5);
+        let pitch_damping_moment = get_aero_constant(v, t, 1.0)
+            * 1.0
+            * 1.0
+            * v.linvel.length_recip()
+            // * v.angvel.length()
+            * get_pitch_damping_moment_coefficient()
+            * direction_vec;
 
-        let pitch_damping_moment = Vec3::default();
-
-        t.torque = t.torque + pitch_damping_moment;
+        f.torque = f.torque + pitch_damping_moment;
     }
 }
 
@@ -259,15 +193,67 @@ fn reference_area(ref_diameter: Real) -> Real {
     std::f32::consts::PI * ref_diameter * ref_diameter / 4.0
 }
 
-fn dynamic_pressure(vel: &Real) -> Real {
-    let rho = 0.0751;
-    0.5 * rho * vel * vel
-}
-
 fn get_air_density(pos: &Transform) -> Real {
     0.0751
 }
 
+fn get_angle_of_attack(v: &Velocity, t: &Transform) -> Real {
+    let aoa = v
+        .linvel
+        .angle_between(Vec3::from(t.rotation.to_scaled_axis()));
+
+    if aoa.is_nan() {
+        return 0.0;
+    }
+
+    println!("{}", aoa);
+
+    aoa
+}
+
+fn get_aero_constant(v: &Velocity, t: &Transform, d: Real) -> Real {
+    let rho = get_air_density(t);
+    let ref_area = reference_area(d);
+
+    let vel_vec = v.linvel;
+    let vel_mag: Real = vel_vec.length();
+
+    let aero_constant = 0.5 * rho * ref_area * vel_mag.powf(2.0);
+    aero_constant
+}
+
 fn get_linear_drag_coefficient() -> Real {
     0.2953
+}
+
+fn get_lift_force_coefficient() -> Real {
+    2.69
+}
+
+fn get_magnus_force_coefficient() -> Real {
+    -0.01
+}
+
+fn get_magnus_moment_coefficient() -> Real {
+    0.05
+}
+
+fn get_overturning_moment_coefficient() -> Real {
+    2.88
+}
+
+fn get_pitch_damping_force_coefficient() -> Real {
+    0.004
+}
+
+fn get_pitch_damping_moment_coefficient() -> Real {
+    -5.5
+}
+
+fn get_spin_damping_moment_coefficient() -> Real {
+    0.003
+}
+
+fn get_rolling_moment_coefficient() -> Real {
+    0.0
 }

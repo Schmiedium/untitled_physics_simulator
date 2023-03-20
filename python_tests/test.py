@@ -4,7 +4,7 @@ from untitled_physics_simulator import Simulation, Entity, TestModel, Warhead, s
 
 def do_simulation_things():
     #create simulation with 0.001 seconds per timestep, and a sim duration of 5.0 seconds. ~5000 steps
-    sim = Simulation(0.01, 5.0, 3600.0)
+    sim = Simulation(0.001, 7.0, 3600.0)
 
     geo = "/home/alex/Documents/3D_Geometry/OBJs/icosahedron.obj"
 
@@ -27,21 +27,22 @@ def do_simulation_things():
     sim.add_entities(entities)
 
     print(f"simulation constructed with {len(entities)} entities")
-    # return simulation_run_headless(sim)
-    return simulation_run(sim)
+    return simulation_run_headless(sim)
+    # return simulation_run(sim)
     # return sim.scene_to_ron()
 
 def main():
 
     #run the simulation with a render, render can be turned off by using simulation_run_headless
     #store the output data in a variable
-    print(do_simulation_things())
+    result = do_simulation_things()
+    print(result)
 
 
 
     #Optionally write dataframes to csv or parquet
     #These are polars dataframes, so you an do whatever with them
-    # result['test12'].write_csv("test12.csv")
+    result['Bullet']['Transform'].write_csv("bullet.csv")
     # result['test7'].write_parquet("test7.parquet")
 
 

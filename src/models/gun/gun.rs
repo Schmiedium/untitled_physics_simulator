@@ -63,8 +63,11 @@ impl Gun {
         // construct the impulse necessary for the desired muzzle velocity
         let impulse = ExternalImpulse {
             impulse: fire_velocity,
-            torque_impulse: Vec3::default(),
+            torque_impulse: (6.0 * fire_direction.to_scaled_axis()),
         };
+
+        let mut transform = Transform::from_translation(t.clone().translation);
+        transform.rotate(fire_direction);
 
         // construct the record component to collect all the data here
         let mut bullet_record = Record::default();
@@ -75,13 +78,15 @@ impl Gun {
             ColliderMassProperties::Mass(10.0),
             impulse,
             ExternalForce::default(),
-            Velocity::default(),
+            Velocity::zero(),
             Sensor,
-            TransformBundle::from(t.clone()),
+            TransformBundle::from(transform),
             bullet_record,
             GravityScale(1.0),
             Ccd::enabled(),
         );
+
+        // println!("{:?}", bullet.7);
 
         self.ammo_count -= 1;
 
@@ -90,7 +95,7 @@ impl Gun {
 }
 
 fn gun_update_record_event(
-    //Query for testmodel and record
+    //Query for test model and record
     guns: Query<(&Gun, &Record)>,
     // EventWriter will take the event we construct and write to the system to be picked up later
     mut record_updates: EventWriter<UpdateRecordEvent>,
