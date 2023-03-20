@@ -42,7 +42,7 @@ def main():
 
     #Optionally write dataframes to csv or parquet
     #These are polars dataframes, so you an do whatever with them
-    result['Bullet']['Transform'].write_csv("bullet.csv")
+    # result['Bullet']['Transform'].write_csv("bullet.csv")
     # result['test7'].write_parquet("test7.parquet")
 
 

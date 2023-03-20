@@ -11,7 +11,7 @@ use bevy_rapier3d::prelude::{
     Ccd, Collider, ColliderMassProperties, ExternalImpulse, GravityScale, Real, RigidBody, Sensor,
     Velocity,
 };
-use glam::{Quat, Vec3};
+use glam::Quat;
 use polars::{df, prelude::NamedFrom};
 
 use crate::framework::{

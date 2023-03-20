@@ -206,7 +206,7 @@ fn get_angle_of_attack(v: &Velocity, t: &Transform) -> Real {
         return 0.0;
     }
 
-    println!("{}", aoa);
+    // println!("{}", aoa);
 
     aoa
 }
