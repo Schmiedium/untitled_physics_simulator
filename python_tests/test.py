@@ -1,10 +1,10 @@
 from untitled_physics_simulator import Simulation, Entity, TestModel, Warhead, simulation_run_headless, simulation_run, Gun
-
+import polars as pl
 
 
 def do_simulation_things():
     #create simulation with 0.001 seconds per timestep, and a sim duration of 5.0 seconds. ~5000 steps
-    sim = Simulation(0.001, 7.0, 3600.0)
+    sim = Simulation(0.001, 9.0, 3600.0)
 
     geo = "/home/alex/Documents/3D_Geometry/OBJs/icosahedron.obj"
 
@@ -12,7 +12,7 @@ def do_simulation_things():
 
     x = 0
     z = 0
-    y = 1
+    y = 3
 
     # for x in range(0, 33, 3):
     #     for y in range(9, 33, 3):
@@ -38,11 +38,13 @@ def main():
     result = do_simulation_things()
     print(result)
 
+    bullet = result['Bullet']['Transform'].join(result['Bullet']['Physics'], on="Time", how="left")
+
 
 
     #Optionally write dataframes to csv or parquet
     #These are polars dataframes, so you an do whatever with them
-    # result['Bullet']['Transform'].write_csv("bullet.csv")
+    bullet.write_csv("bullet.csv")
     # result['test7'].write_parquet("test7.parquet")
 
 

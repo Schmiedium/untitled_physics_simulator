@@ -63,7 +63,7 @@ impl Gun {
         // construct the impulse necessary for the desired muzzle velocity
         let impulse = ExternalImpulse {
             impulse: fire_velocity,
-            torque_impulse: (6.0 * fire_direction.to_scaled_axis()),
+            torque_impulse: (160.0 * fire_direction.to_scaled_axis()),
         };
 
         let mut transform = Transform::from_translation(t.clone().translation);
@@ -75,11 +75,11 @@ impl Gun {
         let bullet = (
             RigidBody::Dynamic,
             Collider::ball(1.0),
-            ColliderMassProperties::Mass(10.0),
+            ColliderMassProperties::Mass(100.0),
             impulse,
             ExternalForce::default(),
             Velocity::zero(),
-            Sensor,
+            // Sensor,
             TransformBundle::from(transform),
             bullet_record,
             GravityScale(1.0),
@@ -160,9 +160,9 @@ fn send_fire_mission(
 ) {
     let fm = FireMission {
         time: world_timer.timer.elapsed_secs(),
-        muzzle_velocity: 500.0,
-        azimuth: bevy_rapier3d::math::Rot::from_rotation_y(std::f32::consts::PI / 4.0),
-        elevation: bevy_rapier3d::math::Rot::from_rotation_z(std::f32::consts::PI / 4.0),
+        muzzle_velocity: 5000.0,
+        azimuth: bevy_rapier3d::math::Rot::from_rotation_y(0.0),
+        elevation: bevy_rapier3d::math::Rot::from_rotation_z(2.0 * std::f32::consts::PI / 180.0),
     };
     outgoing_missions.send(fm);
 }

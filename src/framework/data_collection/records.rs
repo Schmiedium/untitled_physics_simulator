@@ -65,8 +65,8 @@ pub fn position_update_record_event(
 ) {
     for (t, record) in transforms.iter() {
         let new_row = polars::df!["Time" => [world_timer.timer.elapsed_secs()], 
-            "Position_X" => [t.translation.x], "Position_Y" => [t.translation.y], "Position_Z" => [t.translation.z],
-            "Orientation_X" => [t.rotation.to_scaled_axis().x], "Orientation_Y" => [t.rotation.to_scaled_axis().y], "Orientation_Z" => [t.rotation.to_scaled_axis().z]
+            "Position_X" => [t.translation.x], "Position_Y" => [t.translation.y], "Position_Z" => [t.translation.z]
+            // "Orientation_X" => [t.rotation.to_scaled_axis().x], "Orientation_Y" => [t.rotation.to_scaled_axis().y], "Orientation_Z" => [t.rotation.to_scaled_axis().z]
         ].unwrap();
         let table_name = format!("Transform");
 
@@ -92,6 +92,9 @@ pub fn _update_record(update: &UpdateRecordEvent) -> PolarsResult<()> {
         Ok(mut df) => match df.get_mut(&update.table_name) {
             Some(df) => Ok({
                 df.vstack_mut(&update.new_row)?;
+                if df.should_rechunk() {
+                    df.rechunk();
+                }
             }),
             None => {
                 df.insert(update.table_name.clone(), update.new_row.clone());
