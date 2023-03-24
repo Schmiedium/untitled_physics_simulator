@@ -31,19 +31,27 @@ fn get_spin_damping_moment_coefficient() -> Real {
     0.003
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
-    use crate::framework::physics::aerodynamics::spin_damping::calculate_spin_damping_moment;
+    use super::*;
     use bevy::prelude::Transform;
     use bevy_rapier3d::prelude::Velocity;
     use glam::{Quat, Vec3};
 
     #[test]
-    fn test1() {
-        let mut v = Velocity::angular(Vec3::ZERO);
-        v.angvel = Vec3::ZERO;
-        let mut t = Transform::from_translation(Vec3::ZERO);
-        t.rotation = Quat::zeroed();
-        assert_eq!(calculate_spin_damping_moment(&v, &t) == Vec3::ZERO);
+    fn spin_damping_moment_test() {
+        let mut v = Velocity::linear(Vec3::new(49.969540, 0.0, 0.0));
+        v.angvel = Vec3::new(12.558719, 0.438560, 0.0);
+        let mut t = Transform::from_translation(Vec3::new(0.099935, 3.003460, 0.0));
+        t.rotation = Quat::from_scaled_axis(Vec3::new(3.164799, 0.110453, 0.0));
+        assert!(
+            (calculate_spin_damping_moment(&v, &t).normalize() - v.angvel.normalize()).x < 0.000001
+        );
+        assert!(
+            (calculate_spin_damping_moment(&v, &t).normalize() - v.angvel.normalize()).y < 0.000001
+        );
+        assert!(
+            (calculate_spin_damping_moment(&v, &t).normalize() - v.angvel.normalize()).z < 0.000001
+        );
     }
 }
