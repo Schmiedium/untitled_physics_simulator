@@ -10,5 +10,18 @@ There is an included test python file to see what's available
 
 you'll need to supply your own .obj files for now
 
-This is basically brand new and I have just hacked it together, so no judgement please. It is fun though!
+This project assumes NUE coordinates, that is positive x-axis is North, positive y-axis is Up, and positive z-axis is West.
 
+TODO list:
+
+let PSComponent derive macro derive the necessary trait bounds as well, so we only need to derive the one trait
+figure out cpu_thread limiter
+document all the code
+implement caching for convex decomposition of geometry and expose the option
+
+figure out how to expose mass_properties for colliders (mainly inertia tensor and mass, also elasticity)
+add aeroballistic force to all entities (going to be bad time)
+add a way to parse input trajectories. Thinking C2 continuous splines, or maybe that quartic spline from the continuity of splines video?
+
+
+I think if I want to add bullets as entities, they would need to be resources, like the simulation object. Then add a flag to the gun for which bullet to use, query for Bullet resources and get a matching one
