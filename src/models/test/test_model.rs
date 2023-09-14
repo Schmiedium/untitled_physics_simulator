@@ -6,7 +6,7 @@ use crate::framework::{
 };
 use bevy::{
     prelude::{Component, EventWriter, Plugin, Query, ReflectComponent, Res},
-    reflect::{FromReflect, Reflect},
+    reflect::Reflect,
 };
 use polars::prelude::NamedFrom;
 use pscomp_derive::PSComponent;
@@ -20,7 +20,7 @@ use pyo3::{pyclass, pymethods};
 /// The derive macro
 /// the reflect component macro is required by
 #[pyclass]
-#[derive(Component, Clone, Reflect, FromReflect, Default, PSComponent)]
+#[derive(Component, Clone, Reflect, Default, PSComponent)]
 #[reflect(Component)]
 pub struct TestModel {
     test: String,

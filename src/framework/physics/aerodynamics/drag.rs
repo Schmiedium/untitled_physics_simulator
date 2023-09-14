@@ -8,7 +8,7 @@ use pscomp_derive::PSComponent;
 use pyo3::{pyclass, pymethods};
 
 #[pyclass]
-#[derive(Component, Reflect, FromReflect, Clone, Default, PSComponent)]
+#[derive(Component, Reflect, Clone, Default, PSComponent)]
 pub struct DragCurve {
     cd: Vec<f32>,
     mach_number: Vec<f32>,

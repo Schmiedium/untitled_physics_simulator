@@ -10,7 +10,7 @@ use crate::framework::physics::aerodynamics::rolling::rolling_moment;
 use crate::framework::physics::aerodynamics::spin_damping::spin_damping_moment;
 use crate::framework::plugins::base_plugin::WorldTimer;
 use bevy::app::{App, Plugin};
-use bevy::prelude::{EventWriter, IntoSystemConfig, Query, Res, SystemSet, Transform};
+use bevy::prelude::{EventWriter, IntoSystemConfigs, Query, Res, SystemSet, Transform};
 use bevy_rapier3d::prelude::{ExternalForce, Velocity};
 use glam::Vec3;
 use polars::{df, prelude::NamedFrom};

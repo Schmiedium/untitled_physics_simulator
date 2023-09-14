@@ -77,6 +77,7 @@ impl Simulation {
             sim_duration,
             scene: DynamicScene {
                 entities: Vec::new(),
+                resources: Vec::new(),
             },
             types: TypeRegistryInternal::new(),
         };
@@ -199,7 +200,7 @@ impl Simulation {
             vec![trans_b, gtrans_b, vel_comp_b, body_b, n_b, ri_b, ci_b];
 
         let entity = DynamicEntity {
-            entity: index,
+            entity: bevy::ecs::entity::Entity::from_raw(index),
             components,
         };
 
@@ -212,7 +213,7 @@ impl Simulation {
         let index = self.get_first_unused_index();
 
         let mut e1: DynamicEntity = DynamicEntity {
-            entity: index,
+            entity: bevy::ecs::entity::Entity::from_raw(index),
             components: e.components,
         };
 
@@ -258,24 +259,24 @@ impl Simulation {
     }
 }
 
-#[derive(Component, Reflect, FromReflect, Default)]
+#[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 pub struct Name(pub String);
 
-#[derive(Component, Reflect, FromReflect, Default)]
+#[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 pub struct RecordInitializer(pub String);
 
 impl RecordInitializer {}
 
-#[derive(Component, Reflect, FromReflect, Default)]
+#[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 pub struct ColliderInitializer {
     pub path: PathBuf,
     pub shape: Shape,
 }
 
-#[derive(Reflect, FromReflect, Default)]
+#[derive(Reflect, Default)]
 pub enum Shape {
     #[default]
     Trimesh,

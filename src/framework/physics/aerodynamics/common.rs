@@ -9,7 +9,17 @@ fn reference_area(ref_diameter: &Real) -> Real {
 }
 
 fn get_air_density(pos: &Transform) -> Real {
-    1.2931
+    let t_0 = 59.0;
+    let p_0 = 0.0751265;
+
+    let alt = &pos.translation.y;
+    let k = 6.015e-6;
+    let temp = (t_0 + 459.67) * (-1.0 * k * alt).exp() - 459.67;
+
+    let h = 3.158e-5;
+    let pressure = p_0 * (-1.0 * h * alt).exp();
+
+    pressure
 }
 
 pub(in super::super::aerodynamics) fn get_angle_of_attack(v: &Velocity, t: &Transform) -> Real {

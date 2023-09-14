@@ -2,7 +2,7 @@ use crate::framework::plugins::base_plugin::WorldTimer;
 
 use crate::framework::py_modules::simulation_builder::{Name, RecordInitializer};
 use bevy::prelude::{
-    Commands, Component, Entity, EventReader, EventWriter, Query, Res, Resource, Transform,
+    Commands, Component, Entity, Event, EventReader, EventWriter, Query, Res, Resource, Transform,
 };
 use polars::prelude::{NamedFrom, PolarsResult};
 use std::collections::HashMap;
@@ -52,6 +52,7 @@ pub fn initialize_records(
     }
 }
 
+#[derive(Event)]
 pub struct UpdateRecordEvent {
     pub record: Arc<RwLock<HashMap<String, polars::frame::DataFrame>>>,
     pub table_name: String,
@@ -92,9 +93,6 @@ pub fn _update_record(update: &UpdateRecordEvent) -> PolarsResult<()> {
         Ok(mut df) => match df.get_mut(&update.table_name) {
             Some(df) => Ok({
                 df.vstack_mut(&update.new_row)?;
-                if df.should_rechunk() {
-                    df.rechunk();
-                }
             }),
             None => {
                 df.insert(update.table_name.clone(), update.new_row.clone());

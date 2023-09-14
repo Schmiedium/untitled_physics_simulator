@@ -150,7 +150,7 @@ pub fn dataframe_hashmap_to_python_dict(dfs: DataframeStore) -> PyResult<PyObjec
                 (
                     //this function was copied was copied from reddit/stackoverflow/github
                     rust_series_to_py_series(s).unwrap(),
-                    n,
+                    n.to_string(),
                 )
             })
             //gotta collect the output into a collection before we turn it into the tuple we want

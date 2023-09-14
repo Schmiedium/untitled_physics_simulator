@@ -1,15 +1,15 @@
+use bevy::prelude::Event;
 use bevy::{
     prelude::{
         Bundle, Commands, Component, EventReader, EventWriter, Plugin, Query, ReflectComponent,
         Res, Transform, With,
     },
-    reflect::{FromReflect, Reflect},
+    reflect::Reflect,
     transform::TransformBundle,
 };
 use bevy_rapier3d::dynamics::ExternalForce;
 use bevy_rapier3d::prelude::{
-    Ccd, Collider, ColliderMassProperties, ExternalImpulse, GravityScale, Real, RigidBody, Sensor,
-    Velocity,
+    Ccd, Collider, ColliderMassProperties, ExternalImpulse, GravityScale, Real, RigidBody, Velocity,
 };
 use glam::Quat;
 use polars::{df, prelude::NamedFrom};
@@ -24,13 +24,13 @@ use pscomp_derive::PSComponent;
 use pyo3::{pyclass, pymethods};
 
 #[pyclass]
-#[derive(Component, Reflect, FromReflect, Default, Clone, PSComponent)]
+#[derive(Component, Reflect, Default, Clone, PSComponent)]
 #[reflect(Component)]
 pub struct Gun {
     ammo_count: u32,
 }
 
-#[derive(Component, Reflect, FromReflect, Default)]
+#[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 pub struct CanFire;
 
@@ -160,14 +160,14 @@ fn send_fire_mission(
 ) {
     let fm = FireMission {
         time: world_timer.timer.elapsed_secs(),
-        muzzle_velocity: 5000.0,
+        muzzle_velocity: 50000.0,
         azimuth: bevy_rapier3d::math::Rot::from_rotation_y(0.0),
         elevation: bevy_rapier3d::math::Rot::from_rotation_z(2.0 * std::f32::consts::PI / 180.0),
     };
     outgoing_missions.send(fm);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Event)]
 struct FireMission {
     time: Real,
     muzzle_velocity: Real,

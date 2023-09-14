@@ -1,19 +1,16 @@
-use bevy::{
-    prelude::Component,
-    reflect::{FromReflect, Reflect},
-};
+use bevy::{prelude::Component, reflect::Reflect};
 use pscomp_derive::PSComponent;
 use pyo3::{pyclass, pymethods};
 
 use crate::framework::ps_component::PSComponent;
 use crate::framework::py_modules::entity_builder::Entity;
-#[derive(Component, Clone, Reflect, FromReflect, Default, PSComponent)]
+#[derive(Component, Clone, Reflect, Default, PSComponent)]
 #[pyclass(name = "Warhead")]
 pub struct Warhead {
     wh_type: WarheadType,
 }
 
-#[derive(Reflect, FromReflect, Clone, Default)]
+#[derive(Reflect, Clone, Default)]
 enum WarheadType {
     #[default]
     Frag,

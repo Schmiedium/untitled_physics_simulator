@@ -110,10 +110,7 @@ fn simulation_run_headless(simulation: simulation_builder::Simulation) -> PyResu
         .insert_resource(world_timer)
         .insert_resource(WallTime(simulation.wall_time))
         .insert_resource(simulation)
-        .add_asset::<bevy::render::mesh::Mesh>()
-        .insert_resource(bevy::app::ScheduleRunnerSettings {
-            run_mode: bevy::app::RunMode::Loop { wait: None },
-        })
+        .add_asset::<Mesh>()
         .run();
 
     let dfs = receiver.recv().unwrap();
